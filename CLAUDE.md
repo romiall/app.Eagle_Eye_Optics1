@@ -1,40 +1,80 @@
 # Instructions de développement Eagle’s Eye Optics Medical
 
-Le projet est défini dans `specifications/README.md`. Le socle de toute l’application comprend MCD, MLD et SQL complet dans `database/`. Les fichiers 22–25 et `specifications/developpement/backlog.json` définissent maintenant l’exécution détaillée. Le développement applicatif démarre lorsque l’utilisateur donne la consigne d’implémentation, par exemple le prompt 16.
+Application métier privée d’un cabinet d’optique (patients, consultations, ventes, caisse, stock), en français. Le projet est défini dans `specifications/README.md`. Le socle de toute l’application comprend MCD, MLD et SQL complet dans `database/`. Les fichiers 22–25 et `specifications/developpement/backlog.json` définissent l’exécution détaillée. **Le développement est commencé** : ce fichier sert à reprendre le travail (notamment sur le cloud) sans repartir de zéro.
+
+## Où en est le projet (2026-10-25)
+
+- Branche de travail : `claude/developpement-l0` (dépôt public `romiall/app.Eagle_Eye_Optics`). Dernier état vérifié : **CI verte, run 40044078785** (commit `cb7a008` ; le commit suivant `83de627` ne change que la documentation).
+- **Code existant et vérifié** : base complète (117 tables, migrations Laravel), chemin central de commandes, patients et file du jour, consultations par étapes, prescriptions et PDF locaux, ventes (factures, encaissements, reçus, avoirs, remboursements, approbations de la gérante), caisse, stock de base, statistiques, agenda et suivis, import du catalogue, exports, sauvegardes chiffrées et restauration vérifiée, identité visuelle, aide intégrée. Détail par tâche : `docs/implementation/task-status.json` ; récit et écarts : `docs/implementation/progress.md` (section « Vérification de fin de lot 2 »).
+- **Mise en ligne (H01, Hostinger par SSH)** : archive prête (`tools/deploy/build-release.sh`), procédure dans `docs/implementation/deploiement.md`. Seul le demandeur peut agir sur le serveur : il lance `php artisan eeo:preflight` en SSH et transmet le résultat. Ne jamais supposer l’offre d’hébergement (MySQL ou MariaDB, droits, PHP).
+- **Module `offline` FERMÉ en production** (`EEO_ENABLED_MODULES` sans `offline`) jusqu’à la preuve G1/G2. Ne présenter comme disponible que ce qui fonctionne en ligne et a été vérifié.
+- **Non terminé** : parcours e2e hors-ligne `tests/e2e/offline-sync.spec.ts` (en `test.fixme`, le coffre ne s’ouvre pas dans les 20 s) ; O06/O07 (mises à jour PWA, export/restauration d’un poste : code partiel, non terminé) ; chaîne stock L1 (L1D01–L1D03 : code mis de côté hors du dépôt, à réécrire) ; L1D06 (rapprochements mobile money : abandonné pour l’instant) ; liens vers la comparaison d’examens (onglet de la fiche patient, page d’examen).
+
+## Par où reprendre (ordre de lecture)
+
+1. Ce fichier, puis `docs/implementation/progress.md` (état courant, priorités du demandeur, écarts de planning) et `docs/implementation/task-status.json` (statut et preuves de chaque tâche).
+2. `specifications/developpement/backlog.json` et les fiches `specifications/24-taches-developpement.md` : graphe des tâches, prérequis, critères. Plan `22`, contrats d’ingénierie `23`, gates `25`.
+3. Le document du domaine touché, dans `docs/implementation/` : `access`, `agenda`, `billing`, `clinical`, `command-bus`, `contracts`, `documents`, `local-reads`, `modules`, `operations`, `patients`, `reports`, `rules`, `schema`, `shell`, `vault`, `testing`, `startup`, `build`, `deploiement`.
+4. Avant la caisse ou toute fonction hors-ligne : `specifications/19-hors-ligne-et-synchronisation.md` et `docs/implementation/vault.md`.
+
+**Prochaines tâches, dans l’ordre** : (1) accompagner H01 jusqu’à la mise en ligne (instructions, corrections suite au preflight, smoke, restauration réelle) ; (2) **preuve G1** après la mise en ligne : `tests/e2e/first-slice.spec.ts` et `docs/evidence/G1.md`, avec profil de navigateur persistant, patient, facture de 80 000, paiements de 30 000 puis 50 000, PDF, fermeture du navigateur, ACK perdu puis rejoué ; (3) reprise d’O06/O07 et remise en test de `offline-sync.spec.ts`, puis G2, U01, G3, G4 ; (4) lots L1 restants, puis L2 (CRM, Google, Meta) et L3 (atelier complet, showroom), sans retirer leur conception globale. Ne pas ouvrir un nouveau chantier tant que la mise en ligne L0 n’est pas acquise.
 
 ## Autorité
 
-Lire `specifications/00-sources-et-arbitrages.md` et `15-decisions-et-questions.md`. Les trois références sont la proposition commerciale finale, le cahier des charges optique et le modèle de dossier patient. L’historique Gemini est contexte, pas une source de décisions techniques. Les originaux ne doivent pas être modifiés. Le répertoire `.spec-work/` contient les outils et extractions temporaires de préparation ; il est hors du corpus normatif et de l’archive à fournir.
+Lire `specifications/00-sources-et-arbitrages.md` et `15-decisions-et-questions.md`. Les trois références sont la proposition commerciale finale, le cahier des charges optique et le modèle de dossier patient. L’historique Gemini est contexte, pas une source de décisions techniques. Les originaux (`.docx`, `.pdf`) ne doivent pas être modifiés. Le répertoire `.spec-work/` contient des outils et extractions temporaires de préparation : hors du corpus normatif et de l’archive à fournir.
 
 ## Contraintes acquises
 
-- Hébergement web simple sans VPS. API PHP/Laravel et MySQL ; frontend Vue 3/TypeScript/Tailwind construit en PWA statique, sans serveur Node permanent.
-- Enregistrement patients et facturation **hors-ligne dès L0** : stockage IndexedDB chiffré, PDF locaux, numéros pré-alloués, droits de facture et quotas stock, reprise idempotente. Lire le fichier 19 avant de concevoir la caisse.
+- Hébergement web simple sans VPS. API PHP/Laravel et MySQL 8.4 ; frontend Vue 3/TypeScript/Tailwind construit en PWA statique, sans serveur Node permanent.
+- Enregistrement patients et facturation **hors-ligne dès L0** (cible, encore à prouver : G1) : stockage IndexedDB chiffré, PDF locaux, numéros pré-alloués, droits de facture et quotas stock, reprise idempotente. Lire le fichier 19 avant de concevoir la caisse.
 - Application privée en français, épurée et responsive sur sous-domaine du site existant ; XAF et Africa/Douala proposés d’après les sources.
 - Identité durable du patient, visites et consultations distinctes, historique jamais écrasé.
 - Pièces financières immuables, reçu pour chaque encaissement, paiements/avoirs/remboursements distincts, autorisations gérante et audit.
-- Première livraison ciblée sous deux semaines ; CRM/Google/Meta/atelier complet/showroom dans les lots suivants, sans retirer leur conception globale.
+- CRM/Google/Meta/atelier complet/showroom dans les lots suivants, sans retirer leur conception globale.
 
 ## Lire avant coder
 
 01 périmètre, 02 fonctions, 03 finance/stock, 04 UX, 05 architecture, 06 MCD, 07 données, 08 API, 09 sécurité, 11 impressions, 13 planning, 14 recette, 19 hors-ligne, 20 MLD, 21 invariants, 22 plan détaillé, 23 contrats d’ingénierie, 24 tâches et 25 gates ; `database/README.md`, SQL complet et rapport MySQL. Lire 10 avant intégrations. Le fichier 17 lie chaque exigence à sa source et son test.
 
-Tous les domaines/tables sont définis maintenant : la priorité L0 appartient au planning, pas à la portée du modèle. Créer les migrations Laravel à partir du catalogue/SQL complet en conservant noms, PK/FK, CHECK, colonnes générées, vues et guards utiles. Ne pas remplacer 117 tables intégrales par un modèle partiel centré patients/factures, ni considérer L1–L3 comme des structures à découvrir après l’urgence.
-
-La définition canonique est `database/tools/model_definition.py`; MLD/dictionnaire/DDL/catalogue sont générés ensemble. Maintenir l’alignement de ces artefacts et des migrations. Le SQL est testé sur MySQL 8.4.9 ; l’application, chiffrement/PWA, rôles et fournisseurs restent à valider. Tests SQL seulement sur base isolée, jamais en production.
+Tous les domaines/tables sont définis : la priorité L0 appartient au planning, pas à la portée du modèle. Conserver noms, PK/FK, CHECK, colonnes générées, vues et guards des migrations ; ne pas remplacer les 117 tables par un modèle partiel. La définition canonique est `database/tools/model_definition.py` ; MLD/dictionnaire/DDL/catalogue sont générés ensemble : maintenir l’alignement de ces artefacts et des migrations. Les contrats (`contracts/`) sont générés par `contracts/tools/build_*.py` puis `npm run contracts:types` (sorties en LF, relues par `--check`).
 
 ## Façon de travailler
 
-Suivre le graphe de `specifications/developpement/backlog.json` et les fiches 24, dans l’ordre 22. Initialiser le journal d’exécution ; prendre la première tâche prête et référencer les preuves avant DONE. Le backlog est un plan, tous ses statuts initiaux sont NOT_STARTED. Ne pas régénérer le plan pour effacer un suivi commencé.
+- Suivre le graphe du backlog et les fiches 24. Prendre la première tâche prête, **référencer les preuves avant DONE** (CI, test, document) dans `task-status.json` et `progress.md`. Ne jamais régénérer le plan pour effacer un suivi commencé ; le backlog reste canonique et intact.
+- **Coder une phase entière, puis UNE vérification transversale** (`bash tools/dev/phase-check.sh [--with-e2e] [--only étape,…]`, qui n’arrête pas au premier échec), corriger par domaine, seconde passe si besoin. Jamais de vérification fichier par fichier.
+- Enchaîner la tâche suivante sans attendre une confirmation pour un choix routine. Documenter les vrais blocages et les écarts de planning.
+- Appliquer les choix du fichier 23 : User adapté à login/password_hash/ULID ; tables techniques Laravel séparées ; enfants écrits avant finalisation ; jamais d’UPDATE d’une facture émise pour changer son solde ou sa version (`ledger_version` est une projection distincte) ; journal appareil commun, compartiments par droits, publication pull transactionnelle ; service de réservation avant l’émission (I00). Route directe, synchronisation et tâche appellent les **mêmes actions** ; PDF et notifications suivent le commit.
+- Une caisse hors-ligne principale au départ ; client et serveur passent les mêmes vecteurs de calcul ; mutations locales et centrales atomiques ; aucune commande pendante effacée avant ACK ; un reçu n’est jamais renuméroté à sa synchronisation.
+- Questions sans réponse : utiliser les hypothèses du fichier 15 sur données fictives. **Ne jamais inventer** taxes, prix, identité légale, diagnostic, consentement, séries de numéros ni compatibilité d’hébergement.
+- Tout guide destiné à la cliente va **dans l’interface** (aide intégrée), jamais dans un fichier Markdown.
+- Vérifier permissions serveur et locales, données cliniques, montants, concurrence, quota/numéros, hors-ligne après redémarrage, restauration et PDF (fichier 14). MySQL réel pour verrous et concurrence, Vitest pour les règles TypeScript, Playwright pour coupure et reprise. Intégrations : doubles de test, aucun message réel à un patient en développement.
+- Ne pas déclarer « en ligne » ce qui n’est que sauvegardé localement, ni livré un module qui reste simulé. Le PASS de cohérence du plan (fichier 25) n’est pas un PASS applicatif.
 
-Obtenir d’abord G0 (base entière), puis G1 (tranche réellement hors-ligne, persistante après fermeture/reprise, avec patient/facture/deux paiements/PDF et ACK rejouable). Développer le reste de L0 par tranches jusqu’à G4 ; G1 n’est pas la recette L0. Réestimer le délai à J2/J4 sur les preuves obtenues. Des écrans CRUD sans règles de paiement ou une PWA qui affiche seulement des pages en cache ne satisfont pas L0.
+## Règles impératives du demandeur
 
-Appliquer les choix 23 : adapter User à login/password_hash/ULID ; séparer tables techniques Laravel ; conserver les guards et enfants avant finalisation ; ne jamais UPDATE une facture émise pour changer son solde/version. ledger_version est une projection distincte. Un journal appareil commun, des compartiments par droits et la publication pull transactionnelle sont requis. I00 construit le service de réservation avant l’émission. Route directe, sync et job appellent les mêmes actions ; PDF et notifications suivent le commit.
+- **Dépôt public : données fictives seulement.** Aucun secret, aucun `.env` versionné, aucun mot de passe de démonstration répété en clair (ils sont dans `storage/framework/testing/e2e-accounts.json`, ignoré par git) ; pas de mot de passe universel en production.
+- Tests SQL uniquement sur base isolée (`eeo_*_test`), jamais sur la base de production.
+- Une seule session de développement à la fois dans ce dépôt.
+- Livrer code, migrations et build documentés, instructions d’installation sur hébergement simple, journal, preuves et gates.
 
-Utiliser une caisse offline principale au départ. Les autres postes ne modifient pas librement le même solde. Client et serveur passent les mêmes vecteurs de calcul. Les mutations locales et centrales sont atomiques ; aucune commande pendante n’est effacée avant ACK. Ne jamais renuméroter un reçu à sa synchronisation.
+## Environnement et commandes
 
-Pour les questions sans réponse, utiliser les hypothèses du fichier 15 pour avancer sur données fictives. Ne pas inventer taxes, prix, identité légale, diagnostic, consentement ou compatibilité d’hébergement. Un choix routine autorisé ne nécessite pas une nouvelle demande de confirmation. Documenter les vrais blocages avant production et les écarts de planning, en conservant D05/D06.
+- Cloud : PHP 8.3, Composer 2, Node 22, Chromium Playwright dans `/opt/pw-browsers` (**ne jamais lancer `playwright install`** hors CI), MySQL 8.4.9 par `tools/dev/mysql-up.sh` (voir `docs/implementation/startup.md`). La CI GitHub (`.github/workflows/quality.yml`) est la référence des versions : PHP 8.3, Node 22, `mysql:8.4.9`.
+- Installation : `composer install` puis `npm ci`. Variables de test : `EEO_TEST_DB_PORT` (et au besoin `EEO_TEST_DB_DATABASE`, une base `eeo_*_test`).
+- Contrôle complet : `bash tools/dev/phase-check.sh --with-e2e` ; détail des suites et limites : `docs/implementation/testing.md`. Après un changement de contrat : régénérer (`contracts/tools/build_*.py`, `npm run contracts:types`) et vérifier avec `--check`.
+- Poste Windows du demandeur seulement : exporter `OPENSSL_CONF='C:\php84\extras\ssl\openssl.cnf'`, MySQL par `tools/dev/mysql-windows.ps1` (port 3316), Edge pour Playwright (`PLAYWRIGHT_CHROMIUM_EXECUTABLE`). Sur Linux, aucun réglage.
+- Vérifier la CI après un push par l’API publique GitHub (`/repos/romiall/app.Eagle_Eye_Optics/actions/runs`) ; les annotations des jobs en échec sont lisibles sans compte, et la CI publie en annotation la fin des journaux du serveur de test quand un e2e échoue.
+- Mise en ligne : `docs/implementation/deploiement.md` ; sauvegarde et restauration : `tools/deploy/backup.sh`, `restore-check.sh`, `docs/runbooks/server-restore.md`, preuves dans `docs/evidence/restore-rehearsal.md`.
 
-Vérifier permissions serveur et locales, données cliniques, montants, concurrence, quota/numéros, offline après redémarrage, restauration et PDF. Tests pertinents au fichier 14. MySQL réel pour verrous/concurrence, Vitest pour règles TS et Playwright pour coupure/reprise. Les intégrations utilisent des doubles de test sans message réel aux patients pendant développement.
+## Pièges connus (appris à la vérification du lot 2)
 
-Livrer code/migrations/build documentés, compte de démonstration fictif sans mot de passe universel en production, instructions d’installation sur hébergement simple, journal/tâches/preuves/gates et couverture EE/AT. Ne pas déclarer en ligne ce qui est seulement sauvegardé localement, ou livré un module qui reste simulé. Les scripts/tests du fichier 25 sont à créer et exécuter ; le PASS de cohérence du plan n’est pas un PASS applicatif.
+- Écrire les scripts de patch avec l’outil d’écriture de fichiers : les heredocs shell écrasent les barres obliques inverses.
+- `ConfirmDialog` garde le contenu d’une boîte fermée dans le document : deux boîtes sur une page ne doivent jamais partager un `id`.
+- Les tableaux réactifs de Vue ne passent pas par `structuredClone` : copier la charge d’une commande via `useMutation` (copie profonde déjà fournie).
+- Tests e2e : un numéro de téléphone par spec (la détection de ressemblance bloque la création sinon) ; pour changer de compte, quitter la page (`about:blank`) avant d’effacer les cookies ; sur la CI, le calcul SHA-256 de Web Crypto est asynchrone hors du fil principal (tests unitaires de finalisation : empreinte déterministe).
+- L’archive de livraison doit contenir `database/schema_catalog.json` et `database/05_integrity_checks.sql` (lus à l’exécution) ; `build-release.sh` le vérifie.
+- Pint et Prettier : appliquer Prettier à tout le dépôt après un lot de modifications de gabarits Vue (il peut ajouter une espace dans un `<summary>` ou un bouton ; contrôler les tests de texte exact).
+
+## Informations à demander à la cliente (ne jamais les inventer)
+
+Identité légale et mentions des documents, logo validé ; catalogue et prix (unités paire/unité, frais d’examen) ; taxes ou leur absence ; préfixes des séries papier (factures, reçus, avoirs, remboursements, créances, devis) ; personnel et profils (qui encaisse, qui autorise remises et remboursements) ; contrôle du paiement de l’examen à l’accueil ; échelle d’acuité visuelle réelle, convention de cylindre et tolérances ; stock d’ouverture ; carnet de créances papier (dernier numéro, dettes à reprendre) ; horaires d’ouverture et durées de rendez-vous. Les hypothèses en attente de confirmation sont au fichier 15 et dans `progress.md`.

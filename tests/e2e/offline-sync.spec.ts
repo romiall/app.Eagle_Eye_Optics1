@@ -1,11 +1,4 @@
-import {
-  expect,
-  test,
-  type APIRequestContext,
-  type BrowserContext,
-  type Locator,
-  type Page,
-} from '@playwright/test'
+import { expect, test, type APIRequestContext, type Locator, type Page } from '@playwright/test'
 
 import { demoAccount } from './support/accounts'
 
@@ -55,16 +48,31 @@ async function navigateInApp(page: Page, path: string): Promise<void> {
   await expect(page).toHaveURL(new RegExp(`${path.replace(/[/?]/g, '\\$&')}$`))
 }
 
-/** Requêtes de l'API avec la session et le jeton CSRF du navigateur (lectures de contrôle, préparation). */
+/**
+ * Requêtes de l'API avec la session et le jeton CSRF du navigateur (lectures de contrôle, préparation). Sanctum ne
+ * reconnaît la session que pour une requête venue de l'origine de la SPA : Origin et Referer sont donc fournis.
+ */
 async function api(
-  context: BrowserContext,
+  page: Page,
 ): Promise<{ request: APIRequestContext; headers: Record<string, string> }> {
+  const context = page.context()
+  const origin = new URL(page.url()).origin
   const token =
     (await context.cookies()).find((cookie) => cookie.name === 'XSRF-TOKEN')?.value ?? ''
   return {
     request: context.request,
-    headers: { Accept: 'application/json', 'X-XSRF-TOKEN': decodeURIComponent(token) },
+    headers: {
+      Accept: 'application/json',
+      Origin: origin,
+      Referer: `${origin}/`,
+      'X-XSRF-TOKEN': decodeURIComponent(token),
+    },
   }
+}
+
+/** Ligne « Coffre ouvert : … » (le gabarit la précède d'une espace : pas d'ancre ^ sur le texte brut). */
+function vaultOpened(page: Page): Locator {
+  return page.getByText(/Coffre ouvert :/)
 }
 
 async function unlockVault(page: Page): Promise<void> {
@@ -72,7 +80,7 @@ async function unlockVault(page: Page): Promise<void> {
   await page.getByLabel('Profil').selectOption({ index: 1 })
   await page.getByLabel('Secret local').fill(VAULT_SECRET)
   await page.getByRole('button', { name: 'Ouvrir le coffre' }).click()
-  await expect(page.getByText(/^Coffre ouvert :/)).toBeVisible()
+  await expect(vaultOpened(page)).toBeVisible()
 }
 
 function numberValue(rendered: string): number {
@@ -80,10 +88,7 @@ function numberValue(rendered: string): number {
 }
 
 test.describe('poste préparé : coupure réseau, reprise et ACK (O05)', () => {
-  // Reporté après la mise en ligne (module offline fermé en production, preuve G1/G2 à produire ensuite) :
-  // ce parcours, écrit sans avoir été exécuté, s'arrête à l'ouverture du coffre (« Coffre ouvert » absent
-  // dans les 20 s). À instruire avec la preuve G1, puis à remettre en test.
-  test.fixme('patient et encaissement hors ligne, fermeture, retour du réseau, ACK sans doublon ni renumérotation', async ({
+  test('patient et encaissement hors ligne, fermeture, retour du réseau, ACK sans doublon ni renumérotation', async ({
     browser,
   }) => {
     test.setTimeout(300_000)
@@ -106,9 +111,12 @@ test.describe('poste préparé : coupure réseau, reprise et ACK (O05)', () => {
       .getByLabel('Ressaisir la clé de récupération')
       .fill((await recovery.innerText()).trim())
     await page.getByRole('button', { name: 'Confirmer et créer le coffre' }).click()
-    if (await page.getByRole('heading', { name: '2. Ouvrir le coffre de ce poste' }).isVisible())
-      await unlockVault(page)
-    await expect(page.getByText(/^Coffre ouvert :/)).toBeVisible()
+    // Le coffre créé reste fermé : attendre la fin de la création (étape 2 ou coffre déjà ouvert) avant de décider.
+    const unlockStep = page.getByRole('heading', { name: '2. Ouvrir le coffre de ce poste' })
+    const opened = vaultOpened(page)
+    await expect(unlockStep.or(opened).first()).toBeVisible()
+    if (await unlockStep.isVisible()) await unlockVault(page)
+    await expect(opened).toBeVisible()
 
     const deviceCode = `E2E-${RUN}`.toUpperCase()
     await page.getByLabel('Code du poste').fill(deviceCode)
@@ -135,11 +143,13 @@ test.describe('poste préparé : coupure réseau, reprise et ACK (O05)', () => {
     )
 
     // Une facture émise EN LIGNE (examen fictif), attribuée ensuite à ce poste pour y être encaissée.
-    const { request, headers } = await api(context)
-    const me = (await (await request.get('/api/v1/auth/me', { headers })).json()) as {
-      data: { id: string }
-    }
-    const devices = (await (await request.get('/api/v1/devices', { headers })).json()) as {
+    const { request, headers } = await api(page)
+    const meResponse = await request.get('/api/v1/auth/me', { headers })
+    expect(meResponse.status(), await meResponse.text()).toBe(200)
+    const me = (await meResponse.json()) as { data: { id: string } }
+    const devicesResponse = await request.get('/api/v1/devices', { headers })
+    expect(devicesResponse.status(), await devicesResponse.text()).toBe(200)
+    const devices = (await devicesResponse.json()) as {
       data: { device_id: string; device_code: string }[]
     }
     const deviceId =
@@ -208,6 +218,10 @@ test.describe('poste préparé : coupure réseau, reprise et ACK (O05)', () => {
     await page.getByLabel('Date de naissance', { exact: true }).fill('04/03/1985')
     await page.getByLabel('Téléphone principal').fill('+237 600 00 09 82')
     await page.getByRole('button', { name: 'Enregistrer le patient' }).click()
+    // Sans réseau, la recherche de fiches proches est impossible : l'écran le dit, la gérante crée sans vérification.
+    const noCheck = page.getByRole('dialog', { name: 'Vérification des doublons impossible' })
+    await expect(noCheck).toContainText('le serveur n’est pas joignable (pas de connexion)')
+    await noCheck.getByRole('button', { name: 'Créer sans vérification' }).click()
     await expect(page.getByText(/Enregistré sur ce poste/).first()).toBeVisible()
     await expect(page.getByText(/pièces? en attente de synchronisation/).first()).toBeVisible()
 

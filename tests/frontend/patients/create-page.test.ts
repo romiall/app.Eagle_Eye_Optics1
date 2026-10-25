@@ -518,6 +518,7 @@ describe('ressemblances : signalées sans fusion', () => {
     expect(dialog.open).toBe(true)
     expect(textOf(dialog)).toContain('Vérification des doublons impossible')
     expect(textOf(dialog)).toContain('peut produire un doublon')
+    expect(textOf(dialog)).toContain('le serveur n’est pas joignable (pas de connexion)')
     expect(posts(api)).toHaveLength(0)
     expect(buttonByName(dialog, 'Créer sans vérification')).not.toBeNull()
 
@@ -537,6 +538,7 @@ describe('ressemblances : signalées sans fusion', () => {
     await submitForm(root)
 
     expect(textOf(dialogOf(root))).toContain('Vérification des doublons impossible')
+    expect(textOf(dialogOf(root))).toContain('le serveur n’a pas répondu comme attendu')
     unmount()
   })
 

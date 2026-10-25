@@ -49,7 +49,7 @@ const MAX_SUGGESTIONS = 10
 
 type Confirmation =
   | { kind: 'found'; report: DuplicateReport; values: PatientIdentity }
-  | { kind: 'unavailable'; values: PatientIdentity }
+  | { kind: 'unavailable'; values: PatientIdentity; offline: boolean }
 
 const router = useRouter()
 const mutation = useMutation()
@@ -111,7 +111,7 @@ async function findSimilar(values: PatientIdentity): Promise<Confirmation | null
     if (error instanceof ApiError && (error.status === 401 || error.status === 419)) {
       void revalidateSession().catch(() => undefined)
     }
-    return { kind: 'unavailable', values }
+    return { kind: 'unavailable', values, offline: error instanceof NetworkUnavailable }
   }
 }
 
@@ -276,6 +276,11 @@ async function retry(): Promise<void> {
           :more="confirmation.report.more"
         />
       </template>
+      <p v-else-if="confirmation?.offline">
+        La recherche de fiches proches n’a pas pu être faite : le serveur n’est pas joignable (pas
+        de connexion). Créer le patient sans cette vérification peut produire un doublon ; vérifiez
+        la liste des patients au retour de la connexion.
+      </p>
       <p v-else>
         La recherche de fiches proches n’a pas pu être faite : le serveur n’a pas répondu comme
         attendu. Créer le patient sans cette vérification peut produire un doublon.

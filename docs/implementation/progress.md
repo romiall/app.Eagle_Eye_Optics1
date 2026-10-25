@@ -221,6 +221,11 @@ poste, seconde synchronisation sans effet. Le coffre s'ouvrait bien : quatre dé
   « le serveur n'a pas répondu comme attendu » ; elle dit maintenant que le serveur n'est pas joignable (pas de
   connexion) et invite à vérifier la liste au retour du réseau. Test Vitest ajouté pour les deux messages.
 - Outillage : `tests/e2e/support/chromium.ts` trouve aussi le Chromium préinstallé sous `chrome-linux64/`.
+- Outillage : premier passage en CI rouge (run 40246100245) : erreur de segmentation du serveur PHP sur
+  `GET /api/v1/sync/pull`, puis connexion refusée pour tous les tests suivants. Cause : le JIT d'OPcache, actif par défaut
+  sur la CI (setup-php). Reproduit en local avec `opcache.jit=1235` (TypeError « CarbonImmutable attendu, CarbonImmutable
+  reçu » dans `PrepareGrant`) ; `tests/e2e/support/php.ts` coupe le JIT du serveur de test, le parcours repasse. Consigne
+  ajoutée à `deploiement.md` : JIT désactivé sur l'hébergement.
 
 Écart constaté, non corrigé ici : après un encaissement enregistré sur le poste, la page de la facture affiche encore
 « Aucun encaissement » et le reste dû du serveur (seul le message d'état dit l'enregistrement local). Ce n'est pas faux

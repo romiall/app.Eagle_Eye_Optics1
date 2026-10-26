@@ -205,7 +205,8 @@ par O02 : `firebase/php-jwt` ^7 (signature des grants, exigée par le fichier 23
 
 ## Parcours hors-ligne réactivé (2026-10-25)
 
-`tests/e2e/offline-sync.spec.ts` (O05) n'est plus en `test.fixme` : il passe en local (Chromium, 13,7 s) de bout en
+`tests/e2e/offline-sync.spec.ts` (O05) n'est plus en `test.fixme` : **CI verte, run 40246904670** sur `fee510e` (PHP,
+Frontend, E2E) ; il passe aussi en local (Chromium, 13,7 s) de bout en
 bout : préparation du poste, encaissement mobile money et création d'un patient réseau coupé, fermeture de la page,
 retour du réseau, synchronisation, ACK ; un seul paiement et un seul patient sur le serveur, numéros dans les plages du
 poste, seconde synchronisation sans effet. Le coffre s'ouvrait bien : quatre défauts arrêtaient le parcours.

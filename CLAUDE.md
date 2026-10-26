@@ -2,9 +2,9 @@
 
 Application métier privée d’un cabinet d’optique (patients, consultations, ventes, caisse, stock), en français. Le projet est défini dans `specifications/README.md`. Le socle de toute l’application comprend MCD, MLD et SQL complet dans `database/`. Les fichiers 22–25 et `specifications/developpement/backlog.json` définissent l’exécution détaillée. **Le développement est commencé** : ce fichier sert à reprendre le travail (notamment sur le cloud) sans repartir de zéro.
 
-## Où en est le projet (2026-10-25)
+## Où en est le projet (2026-10-26)
 
-- Branche de travail : `claude/developpement-l0` (dépôt public `romiall/app.Eagle_Eye_Optics`). Dernier état vérifié : **CI verte, run 40044078785** (commit `cb7a008` ; le commit suivant `83de627` ne change que la documentation).
+- Dépôt de travail : `romiall/app.Eagle_Eye_Optics1` (public), branche par défaut `main` ; chaque chantier sur une branche `claude/…` et une PR vers `main`, jamais sur le poste du demandeur. Historique : `claude/developpement-l0` (CI verte, run 40044078785 sur `cb7a008`). PR #1 (parcours hors-ligne O05, CI verte run 40246904670) et PR #2 (reprise d’un poste O07, empilée sur #1) en attente de fusion par le demandeur.
 - **Code existant et vérifié** : base complète (117 tables, migrations Laravel), chemin central de commandes, patients et file du jour, consultations par étapes, prescriptions et PDF locaux, ventes (factures, encaissements, reçus, avoirs, remboursements, approbations de la gérante), caisse, stock de base, statistiques, agenda et suivis, import du catalogue, exports, sauvegardes chiffrées et restauration vérifiée, identité visuelle, aide intégrée. Détail par tâche : `docs/implementation/task-status.json` ; récit et écarts : `docs/implementation/progress.md` (section « Vérification de fin de lot 2 »).
 - **Mise en ligne (H01, Hostinger par SSH)** : archive prête (`tools/deploy/build-release.sh`), procédure dans `docs/implementation/deploiement.md`. Seul le demandeur peut agir sur le serveur : il lance `php artisan eeo:preflight` en SSH et transmet le résultat. Ne jamais supposer l’offre d’hébergement (MySQL ou MariaDB, droits, PHP).
 - **Module `offline` FERMÉ en production** (`EEO_ENABLED_MODULES` sans `offline`) jusqu’à la preuve G1/G2. Ne présenter comme disponible que ce qui fonctionne en ligne et a été vérifié.
@@ -63,7 +63,7 @@ Tous les domaines/tables sont définis : la priorité L0 appartient au planning,
 - Installation : `composer install` puis `npm ci`. Variables de test : `EEO_TEST_DB_PORT` (et au besoin `EEO_TEST_DB_DATABASE`, une base `eeo_*_test`).
 - Contrôle complet : `bash tools/dev/phase-check.sh --with-e2e` ; détail des suites et limites : `docs/implementation/testing.md`. Après un changement de contrat : régénérer (`contracts/tools/build_*.py`, `npm run contracts:types`) et vérifier avec `--check`.
 - Poste Windows du demandeur seulement : exporter `OPENSSL_CONF='C:\php84\extras\ssl\openssl.cnf'`, MySQL par `tools/dev/mysql-windows.ps1` (port 3316), Edge pour Playwright (`PLAYWRIGHT_CHROMIUM_EXECUTABLE`). Sur Linux, aucun réglage.
-- Vérifier la CI après un push par l’API publique GitHub (`/repos/romiall/app.Eagle_Eye_Optics/actions/runs`) ; les annotations des jobs en échec sont lisibles sans compte, et la CI publie en annotation la fin des journaux du serveur de test quand un e2e échoue.
+- Vérifier la CI après un push par l’API publique GitHub (`/repos/romiall/app.Eagle_Eye_Optics1/actions/runs`) ; les annotations des jobs en échec sont lisibles sans compte, et la CI publie en annotation la fin des journaux du serveur de test quand un e2e échoue.
 - Mise en ligne : `docs/implementation/deploiement.md` ; sauvegarde et restauration : `tools/deploy/backup.sh`, `restore-check.sh`, `docs/runbooks/server-restore.md`, preuves dans `docs/evidence/restore-rehearsal.md`.
 
 ## Pièges connus (appris à la vérification du lot 2)

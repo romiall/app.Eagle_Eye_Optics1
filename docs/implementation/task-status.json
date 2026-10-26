@@ -406,9 +406,14 @@
    "notes": ""
   },
   "O07": {
-   "status": "NOT_STARTED",
-   "evidence": [],
-   "notes": ""
+   "status": "IN_REVIEW",
+   "evidence": [
+    "tests/e2e/device-recovery.spec.ts",
+    "tests/frontend/offline/recovery.test.ts",
+    "tests/Feature/Offline/DeviceReplacementTest.php",
+    "docs/runbooks/local-recovery.md"
+   ],
+   "notes": "Export chiffré, reprise sur poste neuf (mêmes identifiants et numéros, aucun droit recopié), clôture de l'ancien poste et poste réapparu mis en revue : prouvés en local le 2026-10-26 (PHPUnit, Vitest, Playwright). Message de refus de synchronisation corrigé (syncFailure.ts). À confirmer par G2 ; module offline fermé en production."
   },
   "G2": {
    "status": "NOT_STARTED",

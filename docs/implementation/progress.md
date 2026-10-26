@@ -187,7 +187,7 @@ Défauts réels trouvés et corrigés par cette vérification (jamais vus avant,
 
 Écarts connus, tous hors de la mise en ligne L0 :
 - ~~`tests/e2e/offline-sync.spec.ts` est en `test.fixme`~~ : réactivé le 2026-10-25 (voir « Parcours hors-ligne réactivé ») ; preuve G1/G2 à produire ensuite ;
-- O06/O07 (mises à jour PWA, export/restauration d'un poste) : code partiel, non terminé, module `offline` fermé ;
+- O06 (mises à jour PWA) : code partiel, non terminé ; O07 (export et reprise d'un poste) prouvé en local le 2026-10-26 (section « Reprise d'un poste ») ; module `offline` fermé ;
 - L1D01–L1D03 (chaîne stock L1) mis de côté hors du dépôt ; L1D06 abandonné pour l'instant ;
 - tests e2e : les changements de compte quittent la page avant d'effacer les cookies (une requête en vol recréait la session) ;
 - poste Windows : `OPENSSL_CONF` à exporter pour les clés EC P-256 (sans effet en CI Linux).
@@ -232,6 +232,37 @@ poste, seconde synchronisation sans effet. Le coffre s'ouvrait bien : quatre dé
 « Aucun encaissement » et le reste dû du serveur (seul le message d'état dit l'enregistrement local). Ce n'est pas faux
 (le serveur n'a rien reçu) mais l'affichage des pièces en attente sur la facture reste à faire. Module `offline`
 toujours fermé en production : ce parcours vert ne remplace pas la preuve G1 sur l'hébergement.
+
+## Reprise d'un poste sur un poste neuf (O07, 2026-10-26)
+
+Le code d'export chiffré et de reprise existait (client `offline/recovery/`, écran « Préparer ce poste » étapes 6 et 7,
+serveur `ReplaceDevice`, `recovered-push`, `ReconcileReplacement`) mais n'avait aucune preuve. Ajouté :
+
+- `tests/e2e/device-recovery.spec.ts` (vraie application, deux contextes de navigateur) : poste A préparé, facture
+  attribuée, encaissement réseau coupé, export (le fichier ne contient pas la référence en clair) ; poste B préparé sans
+  numéros, import avec la clé de récupération de A, déclaration, transmission, clôture ; un seul paiement, reçu dans la
+  plage de A, A n'est plus `ACTIVE`, B réserve des plages disjointes ; A réapparaît, crée un patient hors ligne : le
+  serveur refuse, « Conflits à revoir : 1 », le patient n'existe pas ; B rechargé affiche « ancien poste clôturé ».
+- `tests/frontend/offline/recovery.test.ts` (Vitest, 4 tests) : rien en clair, refus (mauvaise clé, illisible, autre
+  version, altéré, même poste), rangement idempotent sans aucun droit recopié, transmission telle quelle puis rien.
+- `tests/Feature/Offline/DeviceReplacementTest.php` (MySQL, 4 tests) : reprise et clôture (numéros restants `UNUSED`),
+  clôture prématurée `SYNC_INCOMPLETE`, refus (avant remplacement, soi-même, inconnu, second remplacement, rôle caisse),
+  poste réapparu en revue et pull refusé.
+- `tests/e2e/support/device.ts` : préparation de poste, facture attribuée, encaissement hors ligne et lectures de
+  contrôle partagés avec `offline-sync.spec.ts`.
+- Runbook d'exploitation : `docs/runbooks/local-recovery.md`.
+
+Corrections et écarts :
+
+- Application : un refus du serveur à la synchronisation (poste remplacé, autorisation retirée) s'affichait comme
+  « échange impossible pour le moment », comme une simple coupure. `app/services/syncFailure.ts` distingue maintenant
+  coupure, autorisation expirée et refus (avec le motif du serveur) ; tests Vitest ajoutés.
+- Test : `prepare-env.mjs` règle `EEO_MAX_CLOCK_SKEW=2` pour le serveur e2e. Avec la tolérance de production (300 s),
+  une action du poste réapparu faite quelques secondes après la révocation est, à juste titre, mise en revue et non
+  refusée nettement ; le test resterait sinon 5 minutes à attendre. La valeur de production n'est pas changée.
+- Test : `setInputFiles` avec un chemin contenant « ’ » échouait ; le fichier est passé par un tampon mémoire.
+
+Module `offline` toujours fermé en production ; O07 reste à confirmer par la gate G2.
 
 ## Environnement de développement (cloud)
 

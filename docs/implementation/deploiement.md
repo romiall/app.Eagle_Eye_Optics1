@@ -60,6 +60,11 @@ toucher aux tables de l'application. Sortie : `OK`, `ALERTE` (à lire, ne bloque
 Les alertes (`expose_php`, OPcache, taille d'envoi) se règlent dans le panneau (PHP, Options) ou un fichier
 `.user.ini`.
 
+Garder le **JIT d'OPcache désactivé** (`opcache.jit=disable` ou `opcache.jit_buffer_size=0`, valeur par défaut de PHP) :
+en développement, avec le JIT actif, les chemins du hors-ligne (autorisations des postes, synchronisation) ont produit
+une erreur de type impossible (PHP 8.3.6) et une erreur de segmentation du serveur (CI). Le cache d'opcodes OPcache,
+lui, reste recommandé.
+
 ## 2. Construire l'archive (poste de développement)
 
 La livraison ne contient ni code de test, ni spécifications, ni dépendances de développement, ni `.env`.

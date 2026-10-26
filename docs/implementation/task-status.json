@@ -330,9 +330,11 @@
    "status": "IN_PROGRESS",
    "evidence": [
     "docs/implementation/vault.md",
-    "https://github.com/romiall/app.Eagle_Eye_Optics/actions/runs/40044078785"
+    "https://github.com/romiall/app.Eagle_Eye_Optics/actions/runs/40044078785",
+    "tests/e2e/offline-sync.spec.ts",
+    "https://github.com/romiall/app.Eagle_Eye_Optics1/actions/runs/40246904670"
    ],
-   "notes": "Codage en cours le 2026-10-23 (push, pull, ACK, conflits durables). Serveur vérifié (PHPUnit : SyncPushTest, SyncPullTest, SignedCommandsTest, SyncConcurrencyTest) ; le parcours e2e tests/e2e/offline-sync.spec.ts est en test.fixme (coffre non ouvert dans les 20 s) : preuve G1 à produire après la mise en ligne. Module offline fermé en production."
+   "notes": "Codage le 2026-10-23 (push, pull, ACK, conflits durables). Serveur vérifié (PHPUnit : SyncPushTest, SyncPullTest, SignedCommandsTest, SyncConcurrencyTest). Parcours e2e tests/e2e/offline-sync.spec.ts réactivé le 2026-10-25 et vert en local et en CI (run 40246904670) (progress.md, « Parcours hors-ligne réactivé »). Module offline fermé en production."
   },
   "D01": {
    "status": "IN_REVIEW",

@@ -158,7 +158,7 @@ toute aide destinée à la cliente est intégrée à l'interface (jamais un docu
 | Import contrôlé du catalogue et stock d'ouverture par fichier | X01 (partie catalogue et stock) | Vérifié en local et en CI (run 40044078785) |
 | Créances papier | X01 (partie créances) | Vérifié en local et en CI (série `LEGACY_BALANCE`, justificatif scanné, hors chiffre d'affaires) |
 | Originaux PDF conservés sur le serveur, logo sur les documents | D01 | Vérifié en local et en CI (run 40044078785) |
-| Push, pull, ACK et conflits | O05 | Serveur vérifié (PHPUnit) ; parcours e2e différé (`test.fixme`) jusqu'à la preuve G1 ; module `offline` fermé |
+| Push, pull, ACK et conflits | O05 | Serveur vérifié (PHPUnit) ; parcours e2e `offline-sync.spec.ts` réactivé et vert en local le 2026-10-25 (section « Parcours hors-ligne réactivé ») ; module `offline` fermé |
 | Exports contrôlés | X02 | Vérifié en local et en CI (`operations.md`, tâche planifiée `eeo:exports:process`) |
 | Sauvegardes chiffrées, restauration vérifiée et réconciliation | X03 | Vérifié ; répétition locale PASS (`docs/evidence/restore-rehearsal.md`) ; exercice réel sur l'hébergement à faire |
 | Seconde passe visuelle des écrans (hors ventes, caisse, stock, hors-ligne) | hors backlog (demande du demandeur) | Faite ; vérifiée par vue-tsc, ESLint, Vitest et Playwright |
@@ -186,7 +186,7 @@ Défauts réels trouvés et corrigés par cette vérification (jamais vus avant,
   (exports, `eeo:restore:verify`) ; `build-release.sh` les garde et refuse une archive qui en manque.
 
 Écarts connus, tous hors de la mise en ligne L0 :
-- `tests/e2e/offline-sync.spec.ts` est en `test.fixme` : le coffre ne s'ouvre pas dans les 20 s. Preuve G1/G2 à produire ensuite ;
+- ~~`tests/e2e/offline-sync.spec.ts` est en `test.fixme`~~ : réactivé le 2026-10-25 (voir « Parcours hors-ligne réactivé ») ; preuve G1/G2 à produire ensuite ;
 - O06/O07 (mises à jour PWA, export/restauration d'un poste) : code partiel, non terminé, module `offline` fermé ;
 - L1D01–L1D03 (chaîne stock L1) mis de côté hors du dépôt ; L1D06 abandonné pour l'instant ;
 - tests e2e : les changements de compte quittent la page avant d'effacer les cookies (une requête en vol recréait la session) ;
@@ -202,6 +202,36 @@ Logo : le demandeur a fourni le logo vectoriel de la marque (« logo EEOM », Il
 (aigle et nom) et l'aigle seul en sont extraits sans le cadre ni les coordonnées
 (`resources/frontend/assets/brand/`), icônes de l'application régénérées depuis l'aigle. Dépendance ajoutée
 par O02 : `firebase/php-jwt` ^7 (signature des grants, exigée par le fichier 23).
+
+## Parcours hors-ligne réactivé (2026-10-25)
+
+`tests/e2e/offline-sync.spec.ts` (O05) n'est plus en `test.fixme` : **CI verte, run 40246904670** sur `fee510e` (PHP,
+Frontend, E2E) ; il passe aussi en local (Chromium, 13,7 s) de bout en
+bout : préparation du poste, encaissement mobile money et création d'un patient réseau coupé, fermeture de la page,
+retour du réseau, synchronisation, ACK ; un seul paiement et un seul patient sur le serveur, numéros dans les plages du
+poste, seconde synchronisation sans effet. Le coffre s'ouvrait bien : quatre défauts arrêtaient le parcours.
+
+- Test : la ligne « Coffre ouvert : … » commence par une espace dans le gabarit, l'ancre `^` du sélecteur ne la
+  trouvait jamais (d'où les « 20 s ») ; la décision d'ouvrir le coffre après sa création était prise avant la fin de
+  la création.
+- Test : les lectures de contrôle par `context.request` n'envoyaient ni `Origin` ni `Referer` : Sanctum ne reconnaissait
+  pas la session.
+- Application (`PaymentForm.vue`) : un encaissement enregistré sur le poste restait « saisie non enregistrée » ; la
+  confirmation de sortie bloquait toute navigation après un encaissement hors ligne.
+- Application (`PatientCreatePage.vue`) : sans connexion, la boîte « Vérification des doublons impossible » disait que
+  « le serveur n'a pas répondu comme attendu » ; elle dit maintenant que le serveur n'est pas joignable (pas de
+  connexion) et invite à vérifier la liste au retour du réseau. Test Vitest ajouté pour les deux messages.
+- Outillage : `tests/e2e/support/chromium.ts` trouve aussi le Chromium préinstallé sous `chrome-linux64/`.
+- Outillage : premier passage en CI rouge (run 40246100245) : erreur de segmentation du serveur PHP sur
+  `GET /api/v1/sync/pull`, puis connexion refusée pour tous les tests suivants. Cause : le JIT d'OPcache, actif par défaut
+  sur la CI (setup-php). Reproduit en local avec `opcache.jit=1235` (TypeError « CarbonImmutable attendu, CarbonImmutable
+  reçu » dans `PrepareGrant`) ; `tests/e2e/support/php.ts` coupe le JIT du serveur de test, le parcours repasse. Consigne
+  ajoutée à `deploiement.md` : JIT désactivé sur l'hébergement.
+
+Écart constaté, non corrigé ici : après un encaissement enregistré sur le poste, la page de la facture affiche encore
+« Aucun encaissement » et le reste dû du serveur (seul le message d'état dit l'enregistrement local). Ce n'est pas faux
+(le serveur n'a rien reçu) mais l'affichage des pièces en attente sur la facture reste à faire. Module `offline`
+toujours fermé en production : ce parcours vert ne remplace pas la preuve G1 sur l'hébergement.
 
 ## Environnement de développement (cloud)
 

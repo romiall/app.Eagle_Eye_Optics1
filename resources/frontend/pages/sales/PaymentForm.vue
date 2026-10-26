@@ -109,9 +109,12 @@ const cashBlocked = computed(() => cashMissing.value && props.cashSessionRead ==
 /** Espèces alors que la session du compte n'est pas encore lue : ni refus, ni envoi. */
 const cashUnknown = computed(() => cashMissing.value && props.cashSessionRead !== 'ready')
 
+/** Saisie à protéger tant qu'elle n'est ni confirmée par le serveur ni enregistrée sur ce poste (commit local). */
 const dirty = computed(
   () =>
-    mutation.state.value !== 'synced' && (amount.value !== null || reference.value.trim() !== ''),
+    mutation.state.value !== 'synced' &&
+    savedLocallyAt.value === null &&
+    (amount.value !== null || reference.value.trim() !== ''),
 )
 useUnsavedChangesGuard(dirty)
 

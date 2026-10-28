@@ -347,9 +347,15 @@
    "notes": "Moteur PDF local jsPDF (modèle → plan → PDF/SVG reproductible), reçu, facture, devis, avoir, remboursement, relevé de caisse ; DocumentStore VOLATIL (coffre O01–O05 à brancher) ; polices standard (écart fichier 11 documenté). Vérification transversale de fin de phase 1 (2026-10-23, tools/dev/phase-check.sh --with-e2e) : contrats, Pint, PHPStan, PHPUnit complet, vue-tsc, ESLint, Prettier, Vitest complet, build, Playwright 47/47 verts sur le poste local ; CI GitHub verte (run 39879707020 sur 19d2bda). EN LIGNE seulement (hors-ligne O01–O05 non fait). Lot 2 (codé, non exécuté) : dépôt des originaux sur le serveur (StoreDocumentContent, stockage privé, READY immuable) et téléchargement sous Policy."
   },
   "G1": {
-   "status": "NOT_STARTED",
-   "evidence": [],
-   "notes": ""
+   "status": "IN_REVIEW",
+   "evidence": [
+    "docs/evidence/G1.md",
+    "tests/e2e/first-slice.spec.ts",
+    "tests/e2e/support/device.ts",
+    "tests/e2e/support/profile.ts",
+    "tests/frontend/billing/local-payments.test.ts"
+   ],
+   "notes": "Prouvé en local le 2026-10-28 sur un vrai profil persistant (Edge, Windows) : acompte 30 000 puis solde 50 000 sans réseau, deux reçus et PDF locaux, patient créé sur le poste, fermeture complète puis réouverture, ACK perdu puis rejoué sans doublon ni renumérotation (Vitest 2511 verts). Écart « Aucun encaissement » corrigé (la facture montre les encaissements du poste). Écarts déclarés dans G1.md : facture émise EN LIGNE puis attribuée au poste (lecture locale des écrans patient et facture à faire) ; réouverture réseau rétabli (écran public de déverrouillage hors ligne absent, D14 et D27) ; pas de parcours à horloge truquée (G2). Numéro de run CI à consigner ; passage à DONE à arbitrer avec le demandeur. Module offline fermé en production."
   },
   "B06": {
    "status": "IN_REVIEW",

@@ -5,7 +5,7 @@ Initialisé le 2026-10-14 depuis `specifications/developpement/JOURNAL.md`. Le b
 ## État courant
 
 - Branche : `claude/developpement-l0` (dépôt public : données fictives uniquement). Le travail cloud F01–F06 a été poussé sur `claude/developpement-l0-3pkhne`, dont l'historique est repris tel quel ; le développement se poursuit sur un poste local depuis le 2026-10-15 (une seule session à la fois dans ce dossier).
-- Lot et gate visés : L0 ; **G0 acquis** (voir `docs/evidence/G0.md`), prochain gate G1.
+- Lot et gate visés : L0 ; **G0 acquis** (voir `docs/evidence/G0.md`) ; **G1 prouvé sur la tranche de base le 2026-10-28** (`docs/evidence/G1.md`, écarts déclarés, CI à consigner) ; prochain gate G2 après O06.
 - Tâche courante (2026-10-24) : **lot 2 vérifié** (voir la section « Vérification de fin de lot 2 ») : tout vert en local et en CI (run 40044078785, commit `cb7a008`) ; archive de livraison construite ; prochaine étape : mise en ligne sur Hostinger (H01, `docs/implementation/deploiement.md`). Phase 1 : CI verte, run 39879707020. F10 est DONE (CI verte, run 39702365074). Priorité du demandeur du 2026-10-22 : écrans de base d'abord (section suivante).
 - Dernière preuve acquise : F09 — CI GitHub verte sur `7de8e2b` (run 38782531589 : PHP, Frontend, Playwright Linux 27/27) après revue contradictoire traitée ; Vitest 621. F07 et F08 : CI verte sur `78d9cb2` et `2a83599`. La validation SQL d'origine (`database/VALIDATION.md`) et G0 restent **distincts d'une recette applicative**.
 - Tâches DONE : F01, F02, F03, F04, G0, F05, F06, F07, F08, F09, F10.
@@ -137,6 +137,39 @@ PHPUnit complet sur MySQL 8.4.9 (Feature, Unit, Concurrency) ; Pint, PHPStan ; V
 vue-tsc, ESLint, Prettier ; build ; Playwright complet (patients, file du jour, consultation,
 documents, facturation) ; rendu des PDF de démonstration (golden) relu ; corrections, puis seconde
 passe si nécessaire ; commit, push et CI.
+
+## G1 — Tranche urgente persistante et rejouable (2026-10-28)
+
+Chantier de la branche `claude/preuve-g1` (empilée sur `claude/reprise-poste` tant que les PR #1 et #2 du dépôt de
+travail ne sont pas fusionnées). Preuve détaillée, écarts et limites : `docs/evidence/G1.md`.
+
+- **Code** : la page de la facture lit les encaissements enregistrés sur le poste (coffre ouvert), les affiche « en
+  attente de synchronisation » et les compte dans le reste à encaisser ; version du grand livre attendue alignée sur le
+  journal local (second encaissement possible) ; numéro du reçu affiché hors ligne et PDF du reçu produit sur le poste.
+- **Test** : `tests/e2e/first-slice.spec.ts` (profil persistant `tests/e2e/support/profile.ts`, route d'envoi à trois
+  modes cut, ack-lost, open) ; règles pures `tests/frontend/billing/local-payments.test.ts`.
+- **Vérification locale (2026-10-28)** : vue-tsc, ESLint, Prettier verts ; Vitest 133 fichiers, 2511 tests ; Playwright
+  `first-slice.spec.ts` vert (2,7 min) ; non-régression : voir ci-dessous.
+- **Non-régression locale** : Playwright billing (3), deliveries, legacy-balances et quotes verts ; offline-sync et device-recovery verts lancés seuls et dans l'ordre de la CI après first-slice (la restitution des ressources du poste en fin de parcours est nécessaire : une seule caisse hors ligne détient les numéros financiers). Un enchaînement local de device-recovery a échoué une fois sur « Conflits à revoir : 1 » (course entre la reprise automatique et le clic de synchronisation, repassé seul) : à surveiller en CI.
+- **CI de la branche** : [run 40688437248](https://github.com/romiall/app.Eagle_Eye_Optics2/actions/runs/40688437248) sur `d660b98` (statut à consigner).
+- **À faire ensuite** : consigner le run CI vert dans `G1.md` ; arbitrer les écarts 1 et 2 (facture créée hors ligne par
+  les écrans, déverrouillage public hors ligne) ; O06 puis G2.
+
+## Réponses de la cliente (2026-10-28)
+
+- **Horaires d'ouverture** (à saisir par la gérante dans les paramètres de l'agenda) : lundi, mardi, mercredi 8 h 30 à
+  17 h ; jeudi 10 h 30 à 17 h ; vendredi 8 h 30 à 17 h ; samedi 8 h 30 à 13 h, ainsi que les jours fériés (lecture : même
+  plage que le samedi, à confirmer). Dimanche non précisé (supposé fermé, à confirmer). L'application n'a pas de
+  calendrier des jours fériés : des exceptions datées sont à saisir avant d'ouvrir le module `agenda`.
+- **Carnets papier** : aucune référence ni numéro à reprendre, les séries de pièces démarrent de zéro ; aucune créance
+  papier à reprendre à ce stade (à reconfirmer : pas de dette en cours à reporter). La reprise des créances (X01) reste
+  livrée mais inutilisée au lancement.
+- **Références administratives** : le demandeur a transmis l'immatriculation au RCCM (photo) et l'avis d'imposition de
+  la DGI. Dépôt public : ces valeurs ne sont PAS recopiées ici ; la gérante les saisit dans Paramètres, Cabinet et
+  documents, à la mise en ligne. Restent à confirmer avec la cliente : dénomination légale exacte (celle de l'avis
+  diffère du nom commercial de l'application), capital, objet de l'activité, adresse précise, téléphone, e-mail, régime
+  fiscal à valider avec le comptable avant de configurer une taxe, préfixes des séries. Les documents restent marqués
+  TEST (`PRODUCTION_DOCUMENTS_ENABLED=false`) tant que ces points ne sont pas validés.
 
 ## Lot 2 — codé en parallèle, vérification en fin de lot (2026-10-23)
 

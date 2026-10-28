@@ -19,7 +19,15 @@ Sur le poste local du demandeur, **l'accès SSH sans mot de passe est déjà con
   - `~/eeo-backups/` → sauvegardes chiffrées quotidiennes et pré-déploiement
   - `~/domains/app-eagleseye.com/public_html` → lien symbolique vers `~/eeo/public`
 
-Pour déployer **toute nouvelle modification validée (commit propre)** en une seule commande depuis Git Bash :
+Pour déployer **toute nouvelle modification validée (commit propre)** en une seule commande :
+
+- Depuis **PowerShell** :
+
+```powershell
+.\tools\deploy\deploy-hostinger.ps1
+```
+
+- Depuis **Git Bash** (ou PowerShell après rechargement du profil) :
 
 ```bash
 bash tools/deploy/deploy-hostinger.sh

@@ -1,4 +1,4 @@
-# Prompt de reprise après la session G1 (2026-10-28)
+# Prompt de reprise après la session G1 (2026-10-28) — OBSOLÈTE, remplacé par `reprise-apres-g1-ci-verte.md`
 
 À coller dans une NOUVELLE discussion Claude Code ouverte sur le dossier local du projet (poste Windows).
 

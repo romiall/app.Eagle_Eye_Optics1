@@ -151,8 +151,13 @@ travail ne sont pas fusionnées). Preuve détaillée, écarts et limites : `docs
 - **Vérification locale (2026-10-28)** : vue-tsc, ESLint, Prettier verts ; Vitest 133 fichiers, 2511 tests ; Playwright
   `first-slice.spec.ts` vert (2,7 min) ; non-régression : voir ci-dessous.
 - **Non-régression locale** : Playwright billing (3), deliveries, legacy-balances et quotes verts ; offline-sync et device-recovery verts lancés seuls et dans l'ordre de la CI après first-slice (la restitution des ressources du poste en fin de parcours est nécessaire : une seule caisse hors ligne détient les numéros financiers). Un enchaînement local de device-recovery a échoué une fois sur « Conflits à revoir : 1 » (course entre la reprise automatique et le clic de synchronisation, repassé seul) : à surveiller en CI.
-- **CI de la branche** : [run 40688437248](https://github.com/romiall/app.Eagle_Eye_Optics2/actions/runs/40688437248) sur `d660b98` (statut à consigner).
-- **À faire ensuite** : consigner le run CI vert dans `G1.md` ; arbitrer les écarts 1 et 2 (facture créée hors ligne par
+- **CI de la branche** : [run 40688709991](https://github.com/romiall/app.Eagle_Eye_Optics2/actions/runs/40688709991) sur `dd41316` : verte (PHP, Frontend, E2E : 62 parcours réussis en 2,7 min, `first-slice.spec.ts` compris, aucune exclusion). Le run 40688437248 sur `d660b98` a été annulé par le push suivant (`cancel-in-progress`), sans résultat. `device-recovery.spec.ts` est passé dans ce run ; son intermittence locale reste à surveiller.
+- **État des PR (2026-10-28)** : #1 (O05, `claude/parcours-hors-ligne` vers `main`) et #2 (O07, vers `claude/parcours-hors-ligne`)
+  toujours ouvertes, sans conflit, CI verte sur leurs têtes (runs 40247535133 et 40286960787). `claude/preuve-g1` est en
+  avance de 8 commits sur `main` et en retard d'un seul (`966b5a8`, les originaux de la cliente : cinq fichiers binaires,
+  aucun recoupement avec le code). Ordre de fusion, à faire par le demandeur : #1 en « Create a merge commit », base de #2
+  changée vers `main`, puis #2, puis la PR de `claude/preuve-g1` vers `main`.
+- **À faire ensuite** : arbitrer les écarts 1 et 2 pour passer G1 à DONE (facture créée hors ligne par
   les écrans, déverrouillage public hors ligne) ; O06 puis G2.
 
 ## Réponses de la cliente (2026-10-28)

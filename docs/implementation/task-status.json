@@ -355,7 +355,7 @@
     "tests/e2e/support/profile.ts",
     "tests/frontend/billing/local-payments.test.ts"
    ],
-   "notes": "Prouvé en local le 2026-10-28 sur un vrai profil persistant (Edge, Windows) : acompte 30 000 puis solde 50 000 sans réseau, deux reçus et PDF locaux, patient créé sur le poste, fermeture complète puis réouverture, ACK perdu puis rejoué sans doublon ni renumérotation (Vitest 2511 verts). Écart « Aucun encaissement » corrigé (la facture montre les encaissements du poste). Écarts déclarés dans G1.md : facture émise EN LIGNE puis attribuée au poste (lecture locale des écrans patient et facture à faire) ; réouverture réseau rétabli (écran public de déverrouillage hors ligne absent, D14 et D27) ; pas de parcours à horloge truquée (G2). Numéro de run CI à consigner ; passage à DONE à arbitrer avec le demandeur. Module offline fermé en production."
+   "notes": "Prouvé en local le 2026-10-28 sur un vrai profil persistant (Edge, Windows) : acompte 30 000 puis solde 50 000 sans réseau, deux reçus et PDF locaux, patient créé sur le poste, fermeture complète puis réouverture, ACK perdu puis rejoué sans doublon ni renumérotation (Vitest 2511 verts). Écart « Aucun encaissement » corrigé (la facture montre les encaissements du poste). Écarts déclarés dans G1.md : facture émise EN LIGNE puis attribuée au poste (lecture locale des écrans patient et facture à faire) ; réouverture réseau rétabli (écran public de déverrouillage hors ligne absent, D14 et D27) ; pas de parcours à horloge truquée (G2). CI verte : run 40688709991 sur dd41316 (PHP, Frontend, E2E : 62 parcours réussis dont first-slice) ; passage à DONE à arbitrer avec le demandeur. Module offline fermé en production."
   },
   "B06": {
    "status": "IN_REVIEW",

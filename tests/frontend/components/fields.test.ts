@@ -1,6 +1,7 @@
 import { mount, type VueWrapper } from '@vue/test-utils'
 import { afterEach, describe, expect, it } from 'vitest'
 
+import { controlClasses } from '@/components/form/classes'
 import DateField from '@/components/form/DateField.vue'
 import DecimalField from '@/components/form/DecimalField.vue'
 import MoneyField from '@/components/form/MoneyField.vue'
@@ -341,5 +342,82 @@ describe('SelectField : liste native', () => {
     await select.setValue('MOBILE_MONEY')
     await select.setValue('')
     expect(wrapper.emitted('update:modelValue')).toEqual([['MOBILE_MONEY'], [null]])
+  })
+
+  it('remplace la flèche native par un chevron décoratif, sans toucher au contrôle natif', () => {
+    const wrapper = track(
+      mount(SelectField, {
+        props: { label: 'Sexe', modelValue: null, options: [{ value: 'F', label: 'Féminin' }] },
+      }),
+    )
+
+    expect(wrapper.get('select').classes()).toContain('appearance-none')
+    expect(wrapper.get('select').classes()).toContain('pr-10')
+    expect(wrapper.get('svg').attributes('aria-hidden')).toBe('true')
+    expect(wrapper.get('label').attributes('for')).toBe(wrapper.get('select').attributes('id'))
+  })
+})
+
+describe('présentation des champs (alignement, icône, état invalide)', () => {
+  function follows(first: Element, second: Element): boolean {
+    return Boolean(first.compareDocumentPosition(second) & Node.DOCUMENT_POSITION_FOLLOWING)
+  }
+
+  it('place l’aide puis l’erreur SOUS le contrôle : les saisies d’une rangée restent alignées', () => {
+    const wrapper = track(
+      mount(TextField, {
+        props: {
+          label: 'Nom',
+          modelValue: '',
+          hint: 'Tel qu’il figure sur la pièce',
+          error: 'Trop long.',
+        },
+        attachTo: document.body,
+      }),
+    )
+    const label = wrapper.get('label').element
+    const input = wrapper.get('input').element
+    const [hint, error] = wrapper.findAll('p').map((paragraph) => paragraph.element)
+
+    expect(follows(label, input)).toBe(true)
+    expect(follows(input, hint as Element)).toBe(true)
+    expect(follows(hint as Element, error as Element)).toBe(true)
+  })
+
+  it('garde le libellé sur la ligne de référence des boutons posés à côté du champ', () => {
+    const wrapper = track(mount(TextField, { props: { label: 'Nom', modelValue: '' } }))
+
+    // `.field-label` (base.css) fixe la hauteur et l’écart sur lesquels `--field-label-offset` se règle.
+    expect(wrapper.get('label').classes()).toContain('field-label')
+  })
+
+  it('pose une icône décorative au début du champ, jamais à la place du libellé', () => {
+    const wrapper = track(
+      mount(TextField, { props: { label: 'Téléphone principal', modelValue: '', icon: 'phone' } }),
+    )
+
+    expect(wrapper.get('svg').attributes('aria-hidden')).toBe('true')
+    expect(wrapper.get('input').classes()).toContain('pl-10')
+    expect(wrapper.get('label').text()).toBe('Téléphone principal')
+  })
+
+  it('sans icône : aucun dessin ni marge intérieure en plus', () => {
+    const wrapper = track(mount(TextField, { props: { label: 'Nom', modelValue: '' } }))
+
+    expect(wrapper.find('svg').exists()).toBe(false)
+    expect(wrapper.get('input').classes()).not.toContain('pl-10')
+  })
+
+  it('contrôle invalide : bordure, anneau et fond d’erreur, sans deux fonds en conflit', () => {
+    const invalid = controlClasses(true).join(' ')
+    const valid = controlClasses(false).join(' ')
+
+    expect(invalid).toContain('border-danger')
+    expect(invalid).toContain('bg-danger-soft')
+    expect(invalid).not.toContain('bg-surface')
+    expect(valid).toContain('bg-surface')
+    expect(valid).not.toContain('bg-danger-soft')
+    expect(invalid).toContain('field-control')
+    expect(valid).toContain('field-control')
   })
 })

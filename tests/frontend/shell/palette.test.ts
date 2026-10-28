@@ -96,6 +96,12 @@ const NON_TEXT_PAIRS: readonly [string, string, string][] = [
   ['field', 'surface', 'bordure d’un champ'],
   ['field', 'canvas', 'bordure d’un champ sur le fond'],
   ['danger', 'surface', 'bordure d’un champ invalide'],
+  [
+    'danger',
+    'danger-soft',
+    'bordure et contour de focus d’un champ invalide, sur son fond d’erreur',
+  ],
+  ['danger-strong', 'danger-soft', 'bordure d’un champ invalide survolé'],
   ['primary', 'surface', 'contour de focus, bordure de bouton secondaire'],
   ['primary', 'canvas', 'contour de focus sur le fond'],
   ['primary', 'primary-soft', 'repère de l’option active'],

@@ -154,7 +154,7 @@ travail ne sont pas fusionnées). Preuve détaillée, écarts et limites : `docs
 - **CI de la branche** : [run 40688709991](https://github.com/romiall/app.Eagle_Eye_Optics2/actions/runs/40688709991) sur `dd41316` : verte (PHP, Frontend, E2E : 62 parcours réussis en 2,7 min, `first-slice.spec.ts` compris, aucune exclusion). Le run 40688437248 sur `d660b98` a été annulé par le push suivant (`cancel-in-progress`), sans résultat. `device-recovery.spec.ts` est passé dans ce run ; son intermittence locale reste à surveiller.
 - **État des PR (2026-10-28)** : #1 (O05, `claude/parcours-hors-ligne` vers `main`) et #2 (O07, vers `claude/parcours-hors-ligne`)
   toujours ouvertes, sans conflit, CI verte sur leurs têtes (runs 40247535133 et 40286960787). `claude/preuve-g1` est en
-  avance de 8 commits sur `main` et en retard d'un seul (`966b5a8`, les originaux de la cliente : cinq fichiers binaires,
+  avance sur `main` des commits de #1, de #2 et de G1, et en retard d'un seul (`966b5a8`, les originaux de la cliente : cinq fichiers binaires,
   aucun recoupement avec le code). Ordre de fusion, à faire par le demandeur : #1 en « Create a merge commit », base de #2
   changée vers `main`, puis #2, puis la PR de `claude/preuve-g1` vers `main`.
 - **À faire ensuite** : arbitrer les écarts 1 et 2 pour passer G1 à DONE (facture créée hors ligne par

@@ -60,6 +60,8 @@ async function confirmPasswordIfAsked(page: Page, success: Locator): Promise<boo
   if (!(await dialog.isVisible())) return false
   await dialog.getByLabel('Mot de passe').fill(demoAccount('MANAGER').password)
   await dialog.getByRole('button', { name: 'Confirmer et reprendre' }).click()
+  // La confirmation est terminée (session à jour) avant toute reprise : le dépôt suivant ne part pas avec l'ancienne session.
+  await expect(dialog).toBeHidden()
   return true
 }
 
@@ -83,9 +85,29 @@ test.describe('reprise des créances papier (X01) sur la vraie application', () 
     const scanInput = page.getByLabel('Scan de la pièce ou de la page du carnet (PDF, JPEG ou PNG)')
     const scan = { name: 'carnet-fictif.jpg', mimeType: 'image/jpeg', buffer: SCAN }
     const kept = section.getByText(/Justificatif conservé sur le serveur/)
+    // Diagnostic en cas d'échec : réponses du dépôt et de la confirmation, et texte de la section.
+    const calls: string[] = []
+    page.on('response', (response) => {
+      const path = new URL(response.url()).pathname
+      if (path.endsWith('/legacy-balances/evidence') || path.endsWith('/auth/reauthenticate')) {
+        calls.push(
+          `${response.request().method()} ${path.split('/').slice(-2).join('/')} ${response.status()}`,
+        )
+      }
+    })
     await scanInput.setInputFiles(scan)
     if (await confirmPasswordIfAsked(page, kept)) await scanInput.setInputFiles(scan)
-    await expect(kept).toBeVisible()
+    try {
+      await expect(kept).toBeVisible()
+    } catch (error) {
+      const text = (await section.innerText()).replace(/\s+/g, ' ').slice(0, 500)
+      throw new Error(
+        `Justificatif non conservé. Appels : [${calls.join(' ; ')}]. Section : ${text}`,
+        {
+          cause: error,
+        },
+      )
+    }
 
     // 2. Une créance : patient retrouvé par la recherche, reste dû calculé sur le poste.
     await page.getByRole('combobox', { name: 'Patient' }).fill('Carnet Reprise')

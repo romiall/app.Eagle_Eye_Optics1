@@ -26,10 +26,17 @@ export function removeProfileDirectory(directory: string): void {
   }
 }
 
-export async function openProfile(directory: string): Promise<BrowserContext> {
+/**
+ * `origin` : l'origine de l'application (le serveur principal par défaut). Un test qui arrête et relance SON serveur
+ * (coupure réelle, y compris pour le service worker) ouvre le profil sur l'origine de ce serveur dédié.
+ */
+export async function openProfile(
+  directory: string,
+  origin: string = `http://127.0.0.1:${MAIN_PORT}`,
+): Promise<BrowserContext> {
   return chromium.launchPersistentContext(directory, {
     ...chromiumLaunchOptions(),
-    baseURL: `http://127.0.0.1:${MAIN_PORT}`,
+    baseURL: origin,
     locale: 'fr-FR',
     timezoneId: 'Africa/Douala',
     serviceWorkers: 'allow',

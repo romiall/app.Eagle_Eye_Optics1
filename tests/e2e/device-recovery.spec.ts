@@ -164,6 +164,12 @@ test.describe('export chiffré et reprise d’un poste sur un poste neuf (O07)',
     const backA = await contextA.newPage()
     await backA.goto('/parametres/poste')
     await unlockVault(backA, SECRET_A)
+    // L'échange automatique déclenché par l'ouverture du coffre (envoi de l'ancienne pièce, puis relecture refusée) se
+    // termine AVANT la coupure : un échange n'est jamais doublé, donc une fiche créée pendant celui-ci n'en ferait pas
+    // partie (course connue sur un serveur de test lent).
+    await expect(backA.locator('section[aria-labelledby="titre-synchronisation"]')).toContainText(
+      'dernier essai sans réponse du serveur',
+    )
     // Il enregistre encore une fiche sans réseau (il ignore son remplacement)…
     await contextA.setOffline(true)
     await navigateInApp(backA, '/patients/nouveau')

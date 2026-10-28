@@ -34,8 +34,9 @@ import { newProfileDirectory, openProfile, removeProfileDirectory } from './supp
  *     80 000 sur ses numéros d'origine.
  *
  * Limites déclarées (docs/evidence/G1.md) : la facture est émise en ligne puis attribuée au poste ; la réouverture se
- * fait réseau rétabli (l'écran public de déverrouillage hors ligne n'existe pas encore, D14 et D27) ; les collisions
- * entre onglets, entre postes et la reprise sur un poste neuf relèvent de G2. Données FICTIVES (articles DEMO-*).
+ * fait réseau rétabli par le coffre de la page « Poste » (le démarrage SANS réseau par l'écran public de déverrouillage
+ * est prouvé par `offline-start.spec.ts`, D14 et D27) ; les collisions entre onglets, entre postes et la reprise sur un
+ * poste neuf relèvent de G2. Données FICTIVES (articles DEMO-*).
  */
 
 const VAULT_SECRET = 'verger-lagune-brume-cuivre-47'
@@ -74,9 +75,13 @@ async function expectUnacknowledged(page: Page): Promise<void> {
   expect((await journalCounters(page)).conflicts).toBe(0)
 }
 
-/** Le profil persistant peut avoir gardé sa session : ne se connecter que si le formulaire est affiché. */
+/**
+ * Le profil persistant peut avoir gardé sa session : ne se connecter que si le formulaire est affiché. L'entrée
+ * est `/connexion` : sur un navigateur qui a un coffre, `/` ouvrirait l'écran public de déverrouillage (D27), prouvé
+ * par `offline-start.spec.ts`.
+ */
 async function ensureSignedIn(page: Page): Promise<void> {
-  await page.goto('/')
+  await page.goto('/connexion')
   const home = page.getByRole('heading', { level: 1, name: /^Bonjour / })
   const login = page.getByLabel('Identifiant')
   await expect(home.or(login).first()).toBeVisible()

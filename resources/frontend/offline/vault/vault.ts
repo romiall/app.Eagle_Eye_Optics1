@@ -993,6 +993,21 @@ export class Vault {
     await this.db.vault_meta.put({ key: 'server_time', value: serverIso })
   }
 
+  /**
+   * Résumé du cabinet lu à la dernière session serveur (nom, fuseau, modules ouverts…) : il permet d'ouvrir une session
+   * locale quand le serveur est injoignable au démarrage (D27). Aucune donnée de santé ni secret ; écrit même coffre
+   * verrouillé. La forme est contrôlée à la lecture : une valeur altérée est ignorée, jamais crue.
+   */
+  async noteClinic(summary: Readonly<Record<string, unknown>>): Promise<void> {
+    await this.db.vault_meta.put({ key: 'clinic_summary', value: { ...summary } })
+  }
+
+  async clinicSummary(): Promise<Record<string, unknown> | null> {
+    const value = (await this.db.vault_meta.get('clinic_summary'))?.value
+    if (typeof value !== 'object' || value === null || Array.isArray(value)) return null
+    return value as Record<string, unknown>
+  }
+
   // --- Commit local (O04) : phase A hors transaction, phase C dans UNE transaction ----------------------------
 
   /**

@@ -5,8 +5,8 @@ import { APP_RELEASE } from '@/app/release'
 import { installDocumentStore } from '@/app/services/documents'
 import { moduleOpenOnScreen, session as appSession } from '@/app/session'
 import { MemoryDocumentStore } from '@/documents/store/memory'
-import { clinicTimeZone } from '@/app/clinicTime'
-import type { Release, Replacement } from '@/domain/contracts/generated'
+import { clinicTimeZone, DEFAULT_CLINIC_TIME_ZONE } from '@/app/clinicTime'
+import type { ClinicSummary, Me, Release, Replacement } from '@/domain/contracts/generated'
 import {
   type DeviceSync,
   type ExportManifest,
@@ -28,6 +28,7 @@ import {
   SyncRefused,
   type UpdateReadiness,
   type VaultStatus,
+  vaultDatabaseExists,
 } from '@/offline/api'
 
 import {
@@ -83,6 +84,23 @@ const state = shallowRef<VaultView>({
 let instance: OfflineVault | null = null
 let commands: LocalCommands | null = null
 let sync: DeviceSync | null = null
+/**
+ * Le coffre de CE navigateur existe (détecté au démarrage sans le créer, D27). C'est la seule raison, avec le module
+ * `offline` ouvert par le serveur, d'ouvrir la base : un navigateur sans coffre ne touche jamais à IndexedDB.
+ */
+let vaultDetected = false
+/** Dernier résumé du cabinet écrit dans le coffre (évite de réécrire à chaque relecture de la session). */
+let notedClinic: string | null = null
+
+/**
+ * Vrai si le profil du coffre ouvert n'est pas le compte connecté au serveur : aucune commande n'est alors écrite sur
+ * ce poste au nom de l'autre (D27, « jamais rejouée au nom d'un autre compte »). L'écran le signale.
+ */
+export function identityDiverges(): boolean {
+  const opened = state.value.session
+  const account = appSession.status === 'authenticated' ? appSession.account : null
+  return opened !== null && account !== null && opened.userId !== account.id
+}
 
 /**
  * Moteur de commandes local (O04) du coffre OUVERT, si le module `offline` est ouvert : null sinon (rien ne change
@@ -90,6 +108,7 @@ let sync: DeviceSync | null = null
  */
 export function localCommandsOrNull(): LocalCommands | null {
   if (!offlineModuleOpen() || instance === null || state.value.session === null) return null
+  if (identityDiverges()) return null
   commands ??= instance.localCommands({ timeZone: clinicTimeZone() })
   return commands
 }
@@ -124,7 +143,7 @@ export async function localFinancialFacts(): Promise<LocalFactRecord[]> {
   }
 }
 
-async function refreshLocalCommands(): Promise<void> {
+export async function refreshLocalCommands(): Promise<void> {
   const current = localCommandsOrNull()
   if (current !== null) await current.refresh()
 }
@@ -137,13 +156,15 @@ export function offlineModuleOpen(): boolean {
 }
 
 function vault(): OfflineVault {
-  if (!offlineModuleOpen()) throw new Error('Module de préparation des postes fermé.')
+  if (!offlineModuleOpen() && !vaultDetected) {
+    throw new Error('Module de préparation des postes fermé.')
+  }
   instance ??= openOfflineVault()
   return instance
 }
 
 export async function refreshVault(): Promise<VaultView> {
-  if (!offlineModuleOpen()) {
+  if (!offlineModuleOpen() && !vaultDetected) {
     state.value = { status: 'unavailable', session: null, profiles: [], deviceId: null }
     return state.value
   }
@@ -155,7 +176,104 @@ export async function refreshVault(): Promise<VaultView> {
     profiles: status === 'absent' ? [] : await current.profiles(),
     deviceId: status === 'absent' ? null : await current.deviceId(),
   }
+  if (status !== 'absent') void rememberClinic()
   return state.value
+}
+
+/**
+ * Détecte au démarrage le coffre de CE navigateur, sans le créer, et lit son état (D27) : le serveur peut être
+ * injoignable, le module `offline` n'est alors pas connu. Sans coffre, rien n'est ouvert et rien ne change.
+ */
+export async function detectVault(): Promise<void> {
+  if (!(await vaultDatabaseExists())) return
+  vaultDetected = true
+  await refreshVault()
+}
+
+/**
+ * Retient dans le coffre le résumé du cabinet de la session serveur ouverte (nom, fuseau, modules) : il sert à ouvrir
+ * une session locale quand le serveur est injoignable. Écrit seulement s'il a changé ; une erreur du coffre n'arrête rien.
+ */
+export async function rememberClinic(): Promise<void> {
+  const account = appSession.status === 'authenticated' ? appSession.account : null
+  if (account === null || instance === null || state.value.status === 'absent') return
+  // Copie simple : un objet réactif de Vue ne se clone pas pour IndexedDB.
+  const clinic = JSON.parse(JSON.stringify(account.clinic)) as ClinicSummary
+  const serialized = JSON.stringify(clinic)
+  if (serialized === notedClinic) return
+  try {
+    await instance.noteClinic(clinic)
+    notedClinic = serialized
+  } catch {
+    // Le résumé sera réécrit à la prochaine relecture de la session.
+  }
+}
+
+/**
+ * Compte local de la session du coffre ouverte (D27) : identité et droits SIGNÉS du grant (rien d'autre n'est cru),
+ * résumé du cabinet de la dernière session serveur, `offline` toujours ouvert (le coffre existe). Sans grant valide,
+ * aucun droit : le profil se déverrouille mais ne peut rien faire (l'écran l'explique, la préparation se refait en ligne).
+ */
+export async function localAccountOfSession(): Promise<Me | null> {
+  if (instance === null) return null
+  const opened = instance.session()
+  if (opened === null) return null
+  const [profiles, grants, clinic, clinicId] = await Promise.all([
+    instance.profiles(),
+    instance.grants(),
+    instance.clinic(),
+    instance.clinicId(),
+  ])
+  const profile = profiles.find((row) => row.profileId === opened.profileId)
+  const grant =
+    opened.grantId === null ? null : (grants.find((row) => row.grantId === opened.grantId) ?? null)
+  const modules = new Set([...(clinic?.enabled_modules ?? []), 'offline'])
+  return {
+    id: opened.userId,
+    login: profile?.login ?? '',
+    display_name: opened.displayName,
+    email: null,
+    active: true,
+    version: 1,
+    roles: [],
+    permissions: grant?.permissions ?? [],
+    clinic: {
+      id: clinic?.id ?? clinicId,
+      name: clinic?.name ?? 'Cabinet',
+      timezone: clinic?.timezone ?? DEFAULT_CLINIC_TIME_ZONE,
+      currency: 'XAF',
+      production_documents_enabled: clinic?.production_documents_enabled ?? false,
+      enabled_modules: [...modules],
+      exam_fee_control: clinic?.exam_fee_control ?? 'OFF',
+    },
+  }
+}
+
+/** Activité de la personne sur ce coffre (frappe, clic) : persistée au plus toutes les 15 s par le coffre (D13). */
+export async function touchVault(): Promise<void> {
+  if (instance === null || state.value.session === null) return
+  await instance.touch().catch(() => undefined)
+}
+
+/**
+ * Contrôle périodique de la session du coffre : verrouillage après 30 minutes sans activité, horloge reculée, session
+ * terminée par un autre onglet (D12, D13). Rend vrai quand le coffre vient de se verrouiller ici.
+ */
+export async function checkVaultSession(): Promise<boolean> {
+  if (instance === null || state.value.session === null) return false
+  await instance.checkInactivity().catch(() => undefined)
+  if (instance.session() !== null) return false
+  afterLock()
+  await refreshVault()
+  return true
+}
+
+/** Ce que le verrouillage défait côté application : moteur, synchronisation, conservation des PDF en mémoire. */
+function afterLock(): void {
+  commands = null
+  sync = null
+  // Coffre verrouillé : retour à la conservation volatile (l'écran le dit, comme avant).
+  installDocumentStore(new MemoryDocumentStore(), { persistent: false })
 }
 
 export async function vaultStorageHealth(): Promise<StorageHealth> {
@@ -192,10 +310,7 @@ export async function unlockVault(profileId: string, secret: string): Promise<Se
 export async function lockVault(reason = 'USER'): Promise<void> {
   if (instance === null) return
   await instance.lock(reason)
-  commands = null
-  sync = null
-  // Coffre verrouillé : retour à la conservation volatile (l'écran le dit, comme avant).
-  installDocumentStore(new MemoryDocumentStore(), { persistent: false })
+  afterLock()
   await refreshVault()
 }
 
@@ -454,5 +569,7 @@ export function resetVaultServiceForTests(): void {
   commands = null
   sync = null
   openedExport = null
+  vaultDetected = false
+  notedClinic = null
   state.value = { status: 'unavailable', session: null, profiles: [], deviceId: null }
 }

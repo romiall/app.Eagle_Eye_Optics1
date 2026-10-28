@@ -29,6 +29,7 @@ import StateMessage from '@/components/feedback/StateMessage.vue'
 import PageHeader from '@/components/layout/PageHeader.vue'
 import DuplicateSuggestions from '@/components/patients/DuplicateSuggestions.vue'
 import AppButton from '@/components/ui/AppButton.vue'
+import AppIcon from '@/components/ui/AppIcon.vue'
 import LinkButton from '@/components/ui/LinkButton.vue'
 import {
   type DuplicateReport,
@@ -217,9 +218,7 @@ async function retry(): Promise<void> {
     <PageHeader title-id="titre-nouveau-patient" title="Nouveau patient" icon="user-plus">
       <p class="max-w-prose text-base text-muted">
         Ne créez une fiche que si le patient n’existe pas déjà<template v-if="canSearch">
-          (<RouterLink
-            to="/patients"
-            class="text-link inline-flex min-h-11 items-center font-semibold"
+          (<RouterLink to="/patients" class="text-link py-2.5 font-semibold"
             >chercher dans la liste</RouterLink
           >)</template
         >. Le numéro de dossier est attribué par le serveur à l’enregistrement.
@@ -245,7 +244,7 @@ async function retry(): Promise<void> {
           type="submit"
           :pending="busy"
           :pending-label="checking ? 'Vérification en cours…' : 'Enregistrement en cours…'"
-          >Enregistrer le patient</AppButton
+          ><AppIcon name="check" :size="18" />Enregistrer le patient</AppButton
         >
         <LinkButton to="/patients" variant="secondary">Annuler</LinkButton>
         <SaveStatus :state="saveState" :at="recordedAt" :time-zone="timeZone" />

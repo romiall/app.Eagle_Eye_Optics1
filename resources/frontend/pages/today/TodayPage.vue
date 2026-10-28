@@ -142,7 +142,7 @@ function goToPage(next: number): void {
     </div>
 
     <div role="group" aria-label="Choisir le jour affiché" class="card toolbar p-4 sm:p-5">
-      <div class="flex flex-wrap gap-2 *:grow sm:*:grow-0">
+      <div class="field-action flex flex-wrap gap-2 *:grow sm:*:grow-0">
         <AppButton variant="secondary" @click="shift(-1)"
           ><AppIcon name="chevron-left" :size="18" />Jour précédent</AppButton
         >

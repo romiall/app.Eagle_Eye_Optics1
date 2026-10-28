@@ -96,7 +96,7 @@ defineExpose({ commit })
     :required="props.required"
     :control-id="props.controlId"
   >
-    <div class="flex items-center gap-2">
+    <div class="flex items-stretch gap-2">
       <input
         :id="id"
         v-model="text"
@@ -111,7 +111,11 @@ defineExpose({ commit })
         @blur="commit"
         @keydown.enter="commit"
       />
-      <span :id="`${id}-unite`" class="text-base font-medium text-muted">FCFA</span>
+      <span
+        :id="`${id}-unite`"
+        class="inline-flex shrink-0 items-center rounded-lg border border-line bg-canvas px-3 text-sm font-semibold text-muted"
+        >FCFA</span
+      >
     </div>
   </FieldShell>
 </template>

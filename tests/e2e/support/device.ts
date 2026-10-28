@@ -171,7 +171,14 @@ export async function numberRange(
  */
 export async function issueInvoiceForDevice(
   page: Page,
-  input: { deviceId: string; patientName: string; phone: string; run: string },
+  input: {
+    deviceId: string
+    patientName: string
+    phone: string
+    run: string
+    /** Article facturé (défaut : un examen de vue fictif) et sa quantité. */
+    item?: { search: string; option: RegExp; quantity?: number }
+  },
 ): Promise<{ invoicePath: string; invoiceId: string }> {
   await page.goto('/patients/nouveau')
   await page.getByLabel('Nom (obligatoire)').fill(input.patientName)
@@ -183,8 +190,13 @@ export async function issueInvoiceForDevice(
   // Coffre verrouillé par le rechargement : cette fiche part au serveur par la route directe.
   await expect(page).toHaveURL(/\/patients\/[0-9A-HJKMNP-TV-Z]{26}$/)
   await page.getByRole('link', { name: 'Créer une facture' }).click()
-  await page.getByRole('combobox', { name: 'Ajouter un article du catalogue' }).fill('DEMO-EXA')
-  await page.getByRole('option', { name: /Examen de vue \(fictif\)/ }).click()
+  const item = input.item ?? { search: 'DEMO-EXA', option: /Examen de vue \(fictif\)/ }
+  await page.getByRole('combobox', { name: 'Ajouter un article du catalogue' }).fill(item.search)
+  await page.getByRole('option', { name: item.option }).click()
+  if (item.quantity !== undefined) {
+    await page.getByLabel(/^Quantité \(/).fill(String(item.quantity))
+    await page.getByLabel(/^Quantité \(/).blur()
+  }
   await page.getByRole('button', { name: 'Enregistrer le brouillon' }).click()
   await expect(page).toHaveURL(/\/ventes\/factures\/[0-9A-HJKMNP-TV-Z]{26}$/)
   const invoicePath = new URL(page.url()).pathname
@@ -210,9 +222,8 @@ export async function issueInvoiceForDevice(
   return { invoicePath, invoiceId }
 }
 
-/** Encaissement mobile money du reste de la facture affichée, réseau coupé : « enregistré sur ce poste » seulement. */
-export async function payRemainingOffline(page: Page, reference: string): Promise<void> {
-  await page.getByRole('button', { name: /^Encaisser le reste/ }).click()
+/** Valide un encaissement mobile money saisi : « enregistré sur ce poste » seulement, jamais « sur le serveur ». */
+async function submitMobileMoneyPayment(page: Page, reference: string): Promise<void> {
   await page.getByLabel('Mode de règlement').selectOption({ label: 'Mobile money MTN' })
   await page.getByLabel('Référence de l’opération').fill(reference)
   await page.getByRole('button', { name: /^Encaisser \d/ }).click()
@@ -221,6 +232,23 @@ export async function payRemainingOffline(page: Page, reference: string): Promis
     'Encaissement enregistré sur ce poste, en attente de synchronisation avec le serveur.',
   )
   await expect(main).not.toContainText('Encaissement enregistré sur le serveur')
+}
+
+/** Encaissement mobile money du reste de la facture affichée, réseau coupé : « enregistré sur ce poste » seulement. */
+export async function payRemainingOffline(page: Page, reference: string): Promise<void> {
+  await page.getByRole('button', { name: /^Encaisser le reste/ }).click()
+  await submitMobileMoneyPayment(page, reference)
+}
+
+/** Encaissement mobile money d'un montant saisi (acompte), réseau coupé : « enregistré sur ce poste » seulement. */
+export async function payAmountOffline(
+  page: Page,
+  amount: string,
+  reference: string,
+): Promise<void> {
+  await page.getByLabel('Montant encaissé').fill(amount)
+  await page.getByLabel('Montant encaissé').blur()
+  await submitMobileMoneyPayment(page, reference)
 }
 
 /** Paiements d'une facture lus sur le serveur. */

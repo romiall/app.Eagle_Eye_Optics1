@@ -12,7 +12,9 @@ import {
   type ExportManifest,
   type GrantClaims,
   type ImportReport,
+  isVaultError,
   type LocalCommands,
+  type LocalFactRecord,
   type OfflineVault,
   type OpenedExport,
   openOfflineVault,
@@ -106,6 +108,20 @@ export function deviceSyncOrNull(): DeviceSync | null {
     return null
   sync ??= instance.sync({ transport: httpSyncTransport })
   return sync
+}
+
+/**
+ * Faits financiers enregistrés sur CE poste, avec l'état de leur commande (O04, O05) : vide si le module `offline` est
+ * fermé, le coffre fermé ou le compartiment financier fermé pour la session. Lecture seule : aucune écriture ici.
+ */
+export async function localFinancialFacts(): Promise<LocalFactRecord[]> {
+  if (!offlineModuleOpen() || instance === null || state.value.session === null) return []
+  try {
+    return await instance.localFacts('FINANCIAL')
+  } catch (error) {
+    if (isVaultError(error)) return []
+    throw error
+  }
 }
 
 async function refreshLocalCommands(): Promise<void> {

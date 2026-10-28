@@ -59,6 +59,8 @@ const props = withDefaults(
 const emit = defineEmits<{
   /** Encaissement confirmé par le serveur (réponse ou relecture) : le reçu est à afficher. */
   recorded: [receipt: { receiptId: string; receiptNumber: string | null }]
+  /** Encaissement enregistré sur CE poste préparé (commit local) : l'écran relit les encaissements du poste. */
+  recordedLocal: [at: string]
   /** La facture a changé (reste dû, version) : l'écran la relit. */
   stale: []
   /** La session de caisse n'a pas pu être lue : l'écran la relit. */
@@ -252,6 +254,7 @@ async function afterOutcome(result: MutationOutcome): Promise<void> {
       // synchronisation (O05). Le formulaire reste verrouillé : une nouvelle intention passe par « Nouvel encaissement ».
       savedLocallyAt.value = result.at
       sentPaymentId.value = null
+      emit('recordedLocal', result.at)
       return
     case 'session-expired':
     case 'reauthentication-required':

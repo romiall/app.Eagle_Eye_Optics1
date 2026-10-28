@@ -69,6 +69,12 @@ navigateur arrive avec le premier écran livré (P01, P02).
   le serveur est muet ou répond par une erreur (5xx, maintenance). Ce n'est jamais pris pour une
   déconnexion. L'accueil dit lequel des deux cas se produit (« Serveur injoignable » ou « Session
   non vérifiée »). La coquille relit la session au retour du réseau, puis toutes les 30 secondes.
+  `expired` : la session ouverte sur cet écran a reçu 401 ou 419 (saisies conservées, reconnexion sur place).
+  `local` (vault.md D27) : aucune session du serveur n'est vérifiée et le profil du coffre de ce poste,
+  déverrouillé par la personne sur l'écran public `/deverrouiller`, fait foi (droits de son grant signé,
+  dernier résumé du cabinet connu) ; seuls les écrans marqués `offlineCapable` s'ouvrent, l'accueil dit
+  pourquoi un autre reste fermé. Le serveur reprend la main dès qu'il répond avec une session ; son
+  silence ou l'absence de session chez lui ne retire jamais le profil local.
 - **Garde du routeur** : sans session, la connexion s'ouvre avec `suite` = le chemin demandé, sans
   ses paramètres de requête (aucun nom, téléphone ni filtre dans l'URL). Ce chemin peut contenir un
   identifiant opaque (ULID d'une facture), jamais une donnée personnelle ; après la connexion, seul
@@ -87,7 +93,8 @@ navigateur arrive avec le premier écran livré (P01, P02).
   signalés sans appel au serveur. Un refus du serveur (422 sur `login`) s'affiche sous le champ et
   dans le résumé focalisé, et le mot de passe est à ressaisir. « Trop de tentatives » (429) et «
   Serveur injoignable » sont dits tels quels. Après la connexion, seul un chemin interne est suivi,
-  jamais `//autre-origine`. Le déverrouillage hors-ligne d'un poste préparé appartient à O01 et O02.
+  jamais `//autre-origine`. Sur un navigateur qui a un coffre et sans identité connue, l'écran public
+  `/deverrouiller` passe AVANT la connexion (vault.md, D14 et D27).
 - **Accessibilité de la coquille** : lien « Aller au contenu » en premier arrêt du clavier. Après
   chaque navigation, sauf au premier affichage, le focus va au contenu principal pour que le lecteur
   d'écran annonce le nouvel écran. L'onglet prend le titre de l'écran (« Accueil – Eagle’s Eye
@@ -269,7 +276,8 @@ isolée. Les comptes de démonstration sont fictifs. Le test vérifie :
 - AT29 (parcours patient → facture → reçu sans ressaisie) se vérifie quand les écrans existent (P01,
   P02, B02 à B04, D01). F09 fournit les composants et la coquille de ce parcours.
 - Recherche rapide de l'en-tête (P02) ; état de synchronisation des pièces (F10, O04, O05) ;
-  déverrouillage hors-ligne d'un profil préparé (O01, O02) ; règles des cellules axe et acuité (C02).
+  règles des cellules axe et acuité (C02). Le déverrouillage hors-ligne d'un profil préparé est livré
+  (`/deverrouiller`, vault.md D14 et D27).
 
 ## Revue contradictoire (2026-10-15) et traitement
 

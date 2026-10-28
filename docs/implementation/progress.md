@@ -160,6 +160,29 @@ travail ne sont pas fusionnées). Preuve détaillée, écarts et limites : `docs
 - **À faire ensuite** : arbitrer les écarts 1 et 2 pour passer G1 à DONE (facture créée hors ligne par
   les écrans, déverrouillage public hors ligne) ; O06 puis G2.
 
+## Écarts de G1 : (a2) déverrouillage public du poste (2026-10-28)
+
+Chantier de la branche `claude/deverrouillage-hors-ligne` (empilée sur `claude/preuve-g1`, elle-même sur `claude/reprise-poste`).
+Lève l'écart 2 de G1 : le démarrage du navigateur SANS réseau (AT36 à la lettre). Détail : `docs/implementation/vault.md`,
+« Implémentation (D14, D27) » ; preuve : `docs/evidence/G1.md`.
+
+- **Code** : détection du coffre au démarrage sans le créer (`vaultDatabaseExists`) ; route publique `/deverrouiller` avant la
+  connexion quand un coffre existe et qu'aucune identité n'est connue ; statut de session `local` (profil du coffre, droits
+  signés de son grant, résumé du cabinet retenu) ; écrans `offlineCapable` seulement (accueil, aide, nouveau patient, « Poste ») ;
+  « Verrouiller le poste » et déconnexion qui verrouille d'abord ; coquille démontée coffre verrouillé ; inactivité (30 min),
+  horloge et autre onglet surveillés ; divergence de compte signalée (aucune commande écrite au nom d'un autre compte).
+- **Tests** : `tests/frontend/shell/local-identity.test.ts` (11), `tests/frontend/offline/clinic-summary.test.ts` (6), décompte
+  des routes de `bootstrap.test.ts` ; `tests/e2e/offline-start.spec.ts` : serveur RÉELLEMENT arrêté (Playwright n'applique pas
+  « hors ligne » aux requêtes du service worker), profil persistant, trois fermetures complètes ; `first-slice.spec.ts` entre
+  désormais par `/connexion`.
+- **Vérification locale (2026-10-28)** : vue-tsc, ESLint, Prettier, Vitest complet et build verts ; `offline-start.spec.ts` vert (2,6 min). Playwright complet (`phase-check`) : 58 réussis sur 63 ; les échecs viennent de `device-recovery.spec.ts` (course connue de l'échange, aggravée par un serveur de test lent ; MÊME échec sur le code d'avant ce chantier, vérifié) et de ses effets en cascade (poste non libéré : first-slice, offline-start, offline-sync ne peuvent plus réserver leurs numéros), plus un plantage du processus Playwright sous Windows (code 0xC0000409) sur `auth-session.spec.ts`. Relancés : `auth-session`, `first-slice`, `offline-start` et `offline-sync` verts ; `device-recovery` vert seul après durcissement du test (il attend la fin de l'échange d'ouverture avant la coupure) ; un échec isolé à l'enrôlement, sous lenteur du serveur, n'est pas revenu à la relance.
+- **CI de la branche** : CI_BRANCHE
+- **Contexte** : pendant ce chantier, le demandeur a mis l'application en ligne sur Hostinger (H01, commits de déploiement sur
+  `claude/preuve-g1`) ; le module `offline` y reste fermé : le code de ce chantier est dormant en production (aucun coffre,
+  aucun changement de comportement).
+- **À faire ensuite** : écart 1 de G1 (lecture locale des écrans patient, liste, recherche, catalogue et facture ; création de
+  facture sans réseau) ; O06 puis G2 (issue `vault-locked`, deux onglets, horloge truquée, aide intégrée du hors-ligne).
+
 ## Réponses de la cliente (2026-10-28)
 
 - **Horaires d'ouverture** (à saisir par la gérante dans les paramètres de l'agenda) : lundi, mardi, mercredi 8 h 30 à

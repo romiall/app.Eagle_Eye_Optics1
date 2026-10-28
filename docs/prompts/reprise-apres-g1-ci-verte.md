@@ -1,4 +1,4 @@
-# Prompt de reprise après la session « CI verte de G1 » (2026-10-28)
+# Prompt de reprise après la session « CI verte de G1 » (2026-10-28) — OBSOLÈTE, remplacé par `reprise-apres-deverrouillage.md`
 
 Remplace `reprise-apres-g1.md` (obsolète). À coller dans une NOUVELLE discussion Claude Code ouverte sur le dossier local du projet (poste Windows).
 

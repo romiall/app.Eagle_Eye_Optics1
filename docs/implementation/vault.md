@@ -360,10 +360,10 @@ fichiers ; la passe de vérification les lancera.
 4. Validité des grants : 72 h par défaut, plafond 168 h (fichier 19, à confirmer avec la politique du cabinet).
 5. Bibliothèque JWS serveur ajoutée : `firebase/php-jwt` ^7 (signature JWA R||S et conversions DER par la
    bibliothèque, exigence du fichier 23).
-6. Non fait dans cette passe : écran de verrouillage qui remplace la coquille et route publique de déverrouillage
-   avant la connexion (D14, D27 : avec O04, quand une commande pourra s'écrire hors ligne), annuaire administratif
-   en mémoire, identité d'action unique (`app/actor.ts`), preuves Playwright du coffre (`tests/e2e/vault.spec.ts`),
-   rotation des clés de compartiment (R-rotation, non planifiée).
+6. Non fait dans cette passe : annuaire administratif en mémoire, preuves Playwright du coffre
+   (`tests/e2e/vault.spec.ts`), rotation des clés de compartiment (R-rotation, non planifiée). L'écran de
+   verrouillage qui remplace la coquille, la route publique de déverrouillage avant la connexion et l'identité
+   d'action (D14, D27) sont faits le 2026-10-28 : voir « Implémentation (D14, D27) » plus bas.
 
 ### Pour O03 à O05
 
@@ -545,9 +545,81 @@ générateurs de contrats ont été lancés (`build_resources.py`, `build_openap
 
 ### Reste à faire après O05
 
-O06 (mise à jour PWA et schéma local), O07 (export et restauration du poste), G1 (preuve de la tranche urgente :
-patient, facture, deux paiements, PDF et ACK rejouable sur poste réel). Plus : dépôt des PDF locaux après l'ACK de leur
-pièce (D01, compteurs `documentsToUpload` à zéro tant qu'il n'est pas branché), lecture des projections du pull par
-les écrans hors ligne (fiche, facture), numéro de reçu affiché à l'encaissement hors ligne, `GET /devices/{id}/health`,
-écran de verrouillage et route publique de déverrouillage (D14, D27), réserves sous quota testées de bout en bout,
-ouverture du module `offline` en production seulement après G1.
+O06 (mise à jour PWA et schéma local), G2 (risques financiers, concurrence, reprise complète). O07 et G1 (tranche
+de base) sont prouvés en local ; le numéro de reçu hors ligne (G1) et l'écran public de déverrouillage (D14, D27) sont
+faits. Plus : dépôt des PDF locaux après l'ACK de leur pièce (D01, compteurs `documentsToUpload` à zéro tant qu'il
+n'est pas branché), lecture des projections du pull par les écrans hors ligne (fiche patient, liste, recherche,
+catalogue, création et lecture d'une facture : `offlineCapable` n'est posé que sur les écrans qui savent travailler
+sur le poste), `GET /devices/{id}/health`, réserves sous quota testées de bout en bout, ouverture du module `offline`
+en production seulement après G2.
+
+## Implémentation (D14, D27) — déverrouillage public et session locale — 2026-10-28
+
+Lève l'écart 2 de G1 (démarrage SANS réseau, AT36 à la lettre). Preuve en navigateur réel : `tests/e2e/offline-start.spec.ts`
+(profil persistant, serveur RÉELLEMENT arrêté puisque Playwright n'applique pas « hors ligne » aux requêtes du service
+worker). Règles : `tests/frontend/shell/local-identity.test.ts`, `tests/frontend/offline/clinic-summary.test.ts`.
+
+### Comportement
+
+| Coffre de ce navigateur | Session du serveur | Ce que fait l'application |
+| --- | --- | --- |
+| absent (aucune base `eeo-device`) | quelconque | Flux d'avant (connexion au serveur) ; IndexedDB n'est même pas ouverte |
+| verrouillé, endommagé ou trop récent | aucune identité (inconnue, anonyme, non vérifiée) | Route publique `/deverrouiller` AVANT `/connexion` : profils listés (identifiant et nom), secret local ; coffre illisible : écran d'état explicite, aucune écriture |
+| verrouillé | ouverte ou expirée | Rien n'est imposé : le serveur est l'identité ; le coffre se déverrouille depuis « Poste » ou `/deverrouiller` |
+| déverrouillé par la personne | aucune ou injoignable | Session **locale** (`session.status === 'local'`) : profil du coffre, droits SIGNÉS de son grant, seuls les écrans `offlineCapable` s'ouvrent |
+| déverrouillé | ouverte, même compte | Droits du serveur ; le coffre reste ouvert à côté |
+| déverrouillé | ouverte, AUTRE compte | Droits du serveur ; divergence signalée dans l'en-tête ; aucune commande n'est écrite sur le poste (`localCommandsOrNull()` rend null) |
+
+### Décisions d'application
+
+- **Détection sans création** : `vaultDatabaseExists()` (façade) interroge `indexedDB.databases()` au démarrage, avant la garde
+  du routeur. Un navigateur qui ne sait pas lister ses bases suit le flux d'avant (module ouvert par le serveur). Sans
+  coffre, rien ne change : aucune ouverture d'IndexedDB, le module `offline` fermé en production reste sans effet.
+- **Identité d'action unique (D27)** : réalisée dans `session.ts` (statut `local`) et `app/services/localIdentity.ts`, sans
+  module `actor.ts` séparé : `can()`, `useMutation`, `ReauthDialog` et la garde lisent déjà `session.account`, qui porte
+  le compte du serveur OU, faute de serveur, celui du coffre. Le serveur reprend la main dès qu'il répond avec une session ;
+  son silence ou l'absence de session chez lui ne retire jamais le profil local (`readSession`).
+- **Compte local** (`localAccountOfSession`) : identité et permissions viennent du grant signé de la session du coffre
+  (`GrantSummary.permissions`, jamais d'une saisie) ; sans grant valide, aucun droit (le profil s'ouvre mais ne peut rien
+  faire, l'accueil l'explique). Le résumé du cabinet (nom, fuseau, monnaie, modules) est celui de la dernière session
+  du serveur, retenu dans `vault_meta.clinic_summary` (non secret, écrit même coffre verrouillé, forme contrôlée à la
+  lecture : une valeur altérée est ignorée). `offline` figure toujours dans les modules d'une session locale.
+- **Écrans** : la méta `offlineCapable` marque les écrans qui savent travailler sur le poste (accueil, aide, accès refusé,
+  introuvable, nouveau patient, « Poste »). Les autres restent fermés en session locale : l'accueil dit « « X » demande le
+  serveur ». Les droits du grant s'appliquent comme en ligne (`acces-refuse`).
+- **Coquille démontée (D14)** : sans identité et avec un coffre à ouvrir, `RouterView` n'est plus rendu (menu, compte,
+  déconnexion et contenu disparaissent), seul l'écran de déverrouillage subsiste ; les erreurs du coffre sont traduites
+  (secret vidé après chaque essai, message uniforme, heure de la prochaine tentative après des échecs répétés).
+- **Verrouillage (D12, D15)** : « Verrouiller le poste » (en-tête) ferme le coffre sans quitter le serveur ; « Se
+  déconnecter » verrouille d'abord, sans réseau, puis ferme la session du serveur s'il y en a une (en session locale, il
+  n'y en a pas : le poste se verrouille et s'arrête là).
+- **Inactivité (D13)** : `installVaultWatch()` prolonge la session du coffre à chaque activité (écriture limitée à 15 s par le
+  coffre) et contrôle toutes les 15 s, au retour du focus et de l'onglet : 30 minutes sans activité, horloge reculée ou
+  session terminée par un autre onglet verrouillent ici aussi.
+- **Envoi des pièces** : la synchronisation passe par la session du serveur (Sanctum). En session locale, l'en-tête offre
+  « Se connecter au serveur » dès que le réseau est là ; le poste envoie ensuite (« Synchroniser » ou échange
+  automatique). Un échec d'envoi sans session ne retire rien du journal.
+
+### Limites déclarées
+
+1. **Lecture locale des écrans** : seuls les écrans listés ci-dessus s'ouvrent hors serveur ; la fiche patient, la liste, la
+   recherche, le catalogue et la facture relisent encore le serveur (écart 1 de G1, lot suivant).
+2. **Identité du cabinet des PDF** : après un redémarrage sans serveur, `currentDocumentClinic` retombe sur le nom du cabinet
+   retenu (les autres mentions restent « à renseigner » sur un document de test). Les pièces financières émises gardent leur
+   identité figée. Les mentions complètes hors ligne se retiennent avec les écrans locaux.
+3. **Inactivité** : la logique (30 minutes, horloge reculée) est celle du coffre, éprouvée par `vault.test.ts` ; le parcours
+   en navigateur n'attend pas 30 minutes (aucune horloge truquée), à rejouer en G2.
+4. **Plusieurs profils sur un même poste** : l'écran liste tous les profils actifs ; la bascule d'un profil à l'autre
+   (verrouiller puis déverrouiller) est couverte par le coffre, pas par un parcours dédié (G2, P04).
+5. **Aide intégrée** : les sections « À savoir » et « Pas encore disponible » disent encore que le travail sans Internet
+   n'est pas livré (module `offline` fermé) ; une section dédiée s'ajoutera à l'ouverture du module, après G2.
+6. **Issue `vault-locked` du répartiteur** (D27) : non ajoutée. Coffre verrouillé, la propriété des factures du poste n'est
+   pas lisible, donc une commande qui retomberait sur la route directe n'est pas distinguée d'une autre ; le serveur,
+   lui, refuse tout encaissement direct d'une facture détenue par un poste (`WRITE_OWNER_REQUIRED`) : aucune double
+   écriture. Un message plus précis (« déverrouillez le poste ») est à ajouter avec G2.
+7. **Pièce enregistrée pendant un échange** (observé, pas introduit ici) : un seul échange à la fois (`SyncEngine.syncNow`
+   rejoint l'échange en cours). Une pièce créée pendant un échange lent n'en fait pas partie et ne part qu'à l'échange
+   suivant (au plus 60 s, ou un nouveau clic) : le clic « Synchroniser » ne relance pas un second échange. C'est la cause de
+   l'intermittence de `device-recovery.spec.ts` (« Conflits à revoir : 1 ») sur un serveur de test lent, confirmée par la
+   trace (envoi de 4 s) et par le même échec sur le code d'avant ce chantier ; le test attend désormais la fin de
+   l'échange d'ouverture avant de couper le réseau. À traiter avec G2 (concurrence).

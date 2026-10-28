@@ -213,7 +213,7 @@
     "https://github.com/romiall/app.Eagle_Eye_Optics/actions/runs/40044078785",
     "tests/frontend/offline/vault.test.ts"
    ],
-   "notes": "Lot 2 (2026-10-23) codé, NON EXÉCUTÉ (vérification transversale en fin de lot). Coffre IndexedDB chiffré (AES-GCM, PBKDF2, compartiments), VaultDocumentStore ; module offline fermé ; écran de verrouillage non fait. Vérifié le 2026-10-24 (PHPUnit 2432, PHPStan, Vitest 2496, Playwright, CI 40044078785)."
+   "notes": "Lot 2 (2026-10-23) codé, NON EXÉCUTÉ (vérification transversale en fin de lot). Coffre IndexedDB chiffré (AES-GCM, PBKDF2, compartiments), VaultDocumentStore ; module offline fermé ; écran public de déverrouillage et verrouillage de l'en-tête faits le 2026-10-28 (vault.md, D14 et D27). Vérifié le 2026-10-24 (PHPUnit 2432, PHPStan, Vitest 2496, Playwright, CI 40044078785)."
   },
   "O02": {
    "status": "IN_REVIEW",
@@ -334,7 +334,7 @@
     "tests/e2e/offline-sync.spec.ts",
     "https://github.com/romiall/app.Eagle_Eye_Optics1/actions/runs/40246904670"
    ],
-   "notes": "Codage le 2026-10-23 (push, pull, ACK, conflits durables). Serveur vérifié (PHPUnit : SyncPushTest, SyncPullTest, SignedCommandsTest, SyncConcurrencyTest). Parcours e2e tests/e2e/offline-sync.spec.ts réactivé le 2026-10-25 et vert en local et en CI (run 40246904670) (progress.md, « Parcours hors-ligne réactivé »). Module offline fermé en production."
+   "notes": "Codage le 2026-10-23 (push, pull, ACK, conflits durables). Serveur vérifié (PHPUnit : SyncPushTest, SyncPullTest, SignedCommandsTest, SyncConcurrencyTest). Parcours e2e tests/e2e/offline-sync.spec.ts réactivé le 2026-10-25 et vert en local et en CI (run 40246904670) (progress.md, « Parcours hors-ligne réactivé »). D14 et D27 (écran public de déverrouillage, session locale) livrés le 2026-10-28 : vault.md, tests/e2e/offline-start.spec.ts. Module offline fermé en production."
   },
   "D01": {
    "status": "IN_REVIEW",
@@ -351,11 +351,12 @@
    "evidence": [
     "docs/evidence/G1.md",
     "tests/e2e/first-slice.spec.ts",
+    "tests/e2e/offline-start.spec.ts",
     "tests/e2e/support/device.ts",
     "tests/e2e/support/profile.ts",
     "tests/frontend/billing/local-payments.test.ts"
    ],
-   "notes": "Prouvé en local le 2026-10-28 sur un vrai profil persistant (Edge, Windows) : acompte 30 000 puis solde 50 000 sans réseau, deux reçus et PDF locaux, patient créé sur le poste, fermeture complète puis réouverture, ACK perdu puis rejoué sans doublon ni renumérotation (Vitest 2511 verts). Écart « Aucun encaissement » corrigé (la facture montre les encaissements du poste). Écarts déclarés dans G1.md : facture émise EN LIGNE puis attribuée au poste (lecture locale des écrans patient et facture à faire) ; réouverture réseau rétabli (écran public de déverrouillage hors ligne absent, D14 et D27) ; pas de parcours à horloge truquée (G2). CI verte : run 40688709991 sur dd41316 (PHP, Frontend, E2E : 62 parcours réussis dont first-slice) ; passage à DONE à arbitrer avec le demandeur. Module offline fermé en production."
+   "notes": "Prouvé en local le 2026-10-28 sur un vrai profil persistant (Edge, Windows) : acompte 30 000 puis solde 50 000 sans réseau, deux reçus et PDF locaux, patient créé sur le poste, fermeture complète puis réouverture, ACK perdu puis rejoué sans doublon ni renumérotation (Vitest 2511 verts). Écart « Aucun encaissement » corrigé (la facture montre les encaissements du poste). Écarts déclarés dans G1.md : facture émise EN LIGNE puis attribuée au poste (lecture locale des écrans patient et facture à faire) ; démarrage sans réseau : écart LEVÉ le 2026-10-28 (écran public de déverrouillage, D14 et D27, tests/e2e/offline-start.spec.ts, branche claude/deverrouillage-hors-ligne) ; pas de parcours à horloge truquée (G2). CI verte : run 40688709991 sur dd41316 (PHP, Frontend, E2E : 62 parcours réussis dont first-slice) ; passage à DONE à arbitrer avec le demandeur. Module offline fermé en production."
   },
   "B06": {
    "status": "IN_REVIEW",

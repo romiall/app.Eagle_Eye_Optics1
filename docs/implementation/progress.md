@@ -12,6 +12,14 @@ Initialisé le 2026-10-14 depuis `specifications/developpement/JOURNAL.md`. Le b
 - Blocages externes : Q01–Q04/Q14 (production seulement) ; développement fictif possible.
 - Prochaine action concrète : CI de F10, puis M01 (interrupteur de mise en service des modules), P01 et P02 (patients), consultation par étapes, prescription et impression ; O01–O05 (hors-ligne) ensuite, sans changer G1.
 
+## Présentation des formulaires (2026-10-28)
+
+Chantier demandé par le demandeur (« champs mal alignés, formulaire qui n'inspire pas grand-chose »), indépendant du hors-ligne : branche `claude/formulaires-presentation` partie de `origin/main`, travaillée dans un worktree séparé pour ne pas marcher sur la session du chantier de déverrouillage. Aucune logique métier, aucun libellé et aucune validation ne change.
+
+- **Cause du désalignement** : l'aide d'un champ était placée entre l'étiquette et la saisie (`FieldShell`) ; dans une rangée à deux colonnes, la saisie d'un champ avec aide descendait sous celle de son voisin. Correction à la racine, donc pour tous les formulaires : étiquette, saisie, puis aide et erreur sous la saisie ; `form-grid` aligné en haut ; les boutons posés à côté d'un champ (recherche, filtres) restent alignés sur la saisie (`toolbar`, `field-action`, variable `--field-label-offset`). Écrans réalignés : liste des patients, catalogue, caisse du jour, agenda, statistiques, suivis, Aujourd'hui, exports, nouveau rendez-vous.
+- **Présentation** : étiquettes de 14 px demi-gras, marque « (obligatoire) » discrète, focus propre aux champs (contour à l'encre, halo doré), état invalide plus net (fond `danger-soft`), liste déroulante à chevron, icône du téléphone, pastille « FCFA », légendes de carte à filet doré dans le formulaire patient. Bug annexe : `CheckboxGroup` et `YesNoField` annulaient l'espacement de leur parent (`m-0`).
+- **Preuves** : captures avant/après (Edge, 1280 et 360 px), `vue-tsc`, ESLint, Prettier, Vitest (`fields.test.ts`, `form-styles.test.ts`, `palette.test.ts`), Playwright (`patients.spec.ts` : alignement mesuré dans le navigateur). CI : verte sur le dernier commit de la branche (runs lisibles par l'API publique : /repos/romiall/app.Eagle_Eye_Optics2/actions/runs?branch=claude/formulaires-presentation). Détail : `docs/implementation/shell.md` ; prompt de reprise : `docs/prompts/reprise-apres-formulaires.md`.
+
 ## Priorité du demandeur (2026-10-22), réestimation et écarts de planning
 
 **Décision du demandeur (message du 2026-10-22).** La cliente a payé la moitié de la création et

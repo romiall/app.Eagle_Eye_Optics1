@@ -99,10 +99,11 @@ navigateur arrive avec le premier écran livré (P01, P02).
 | Composant | Usage et garanties |
 | --- | --- |
 | `AppButton` | Libellé qui dit la conséquence ; cible ≥ 44 px ; pendant la commande : désactivé, `aria-busy`, libellé « … en cours » (l'idempotence reste la vraie protection) ; désactivé lisible (teintes pleines, jamais d'opacité) |
-| `FieldShell` | Vrai `label`, aide et erreur reliées par `aria-describedby`, `aria-invalid`, « (obligatoire) » écrit, erreur avec symbole et texte ; identifiant imposable (cible du résumé d'erreurs) |
-| `TextField`, `SelectField` | Saisie conservée telle quelle ; liste native avec option vide explicite (null) |
+| `FieldShell` | Vrai `label` (`.field-label` : 14 px demi-gras, une ligne de 20 px), puis la saisie, puis l'aide et l'erreur **sous la saisie** : les saisies d'une rangée commencent à la même hauteur, avec ou sans aide (aide placée entre l'étiquette et la saisie avant le 2026-10-28, ce qui décalait le champ voisin). Reliées par `aria-describedby` (aide puis erreur), `aria-invalid`, « (obligatoire) » écrit (13 px, rouge d'erreur), erreur avec symbole et texte ; l'étiquette passe à `gold-ink` quand le champ a le focus ; identifiant imposable (cible du résumé d'erreurs) |
+| Contrôles de saisie (`controlClasses`, classe `field-control`) | Cible ≥ 44 px, texte de 16 px, bordure `field` (≥ 3:1), survol : bordure à l'encre ; focus : contour de 2 px à l'encre (au rouge d'erreur si invalide) et halo doré décoratif, règle hors couche plus spécifique que le focus commun (le contour reste dessiné en contraste forcé) ; invalide : bordure, anneau et fond `danger-soft` en plus du message ; désactivé : teintes pleines lisibles |
+| `TextField`, `SelectField` | Saisie conservée telle quelle ; `TextField` : `icon` facultatif (icône décorative au début du champ, par exemple le téléphone) ; `SelectField` : liste native avec option vide explicite (null), flèche remplacée par un chevron décoratif (`appearance-none`, `AppIcon`) |
 | `DecimalField` | Mesures et quantités exactes par les règles F08 (virgule ou point) ; trop de décimales refusé, jamais arrondi ; vide = null, jamais 0 ; lu à la sortie du champ **et à Entrée** (avant l'envoi du formulaire) ; `commit()` exposé ; pavé décimal pour une valeur positive, clavier texte pour une dioptrie (le pavé décimal de l'iPhone n'a pas de « - ») |
-| `MoneyField` | FCFA entiers (« 80 000 »), décimales et séparateurs ambigus refusés ; unité annoncée aux lecteurs d'écran ; affichage relu sans dérive |
+| `MoneyField` | FCFA entiers (« 80 000 »), décimales et séparateurs ambigus refusés ; unité annoncée aux lecteurs d'écran (pastille « FCFA » à droite de la saisie) ; affichage relu sans dérive |
 | `DateField` | JJ/MM/AAAA, ISO ou 8 chiffres JJMMAAAA (pavé numérique de l'iPhone, sans « / ») ; date inexistante refusée ; jamais de date inventée |
 | Saisie refusée (`DecimalField`, `MoneyField`, `DateField`) | Message sous le champ, saisie conservée pour correction, et valeur du parent remise à null : l'ancienne valeur valide ne part jamais à la place de ce que l'écran affiche ; le formulaire bloque l'envoi sur l'événement `invalid` ou le retour de `commit()` |
 | `ComboboxField` | Choix avec recherche (catalogue, dossier) : motif combobox ARIA 1.2, recherche à partir de 2 caractères, ↓/↑ puis Entrée, Échap ferme ; rien n'est choisi à la place de l'utilisateur ; les résultats d'une saisie précédente disparaissent dès la nouvelle saisie et toute réponse obsolète est ignorée ; l'option active est ramenée dans la partie visible de la liste ; « Recherche indisponible » distinct de « Aucun résultat » ; résultats partiels avec avertissement (`{ options, notice }` : dossiers préparés sur ce poste quand la recherche serveur est indisponible). La source des résultats est fournie par l'écran (F10) |
@@ -194,10 +195,13 @@ complète ou les remplace) :
 | `card-grid` | Grille de cartes : 1 colonne, 2 dès 640 px, 3 dès 1024 px |
 | `stat-grid` | Grille de `StatTile` sur un `<dl>` : colonnes automatiques d'au moins 9,5 rem (deux par ligne dès 360 px) |
 | `stat-grid-wide` | Avec `stat-grid` : colonnes d'au moins 14 rem (montants en FCFA, une par ligne sur téléphone) |
-| `toolbar` | Barre de filtres ou de choix (jour, période) : empilée sur téléphone, en ligne alignée en bas dès 640 px |
+| `toolbar` | Barre de filtres ou de choix (jour, période) : empilée sur téléphone, en ligne dès 640 px ; champs alignés en haut, le bouton ou le lien enfant descend de `--field-label-offset` (hauteur de l'étiquette + écart) pour s'aligner sur la saisie, qu'un champ porte une aide ou non |
+| `field-action` | Bouton posé à côté d'un champ hors `toolbar` (recherche : patients, catalogue, caisse du jour) : même décalage `--field-label-offset` dès 640 px, avec `items-start` sur la rangée (jamais `items-end` : l'aide et l'erreur sont sous la saisie) |
+| `field-label` | Étiquette d'un champ (`FieldShell`) : 0,875 rem demi-gras, hauteur et écart pris aux variables `--field-label-height` (1,25 rem) et `--field-label-gap` (0,375 rem) |
 | `section-title` | Titre de section hors carte (`h2`) : 1,125 rem demi-gras, court filet doré vertical devant (décoratif) |
 | `detail-list` | `<dl>` de paires `<div><dt/><dd/></div>` : libellé discret (`muted`, 0,875 rem), valeur en encre, 2 colonnes dès 640 px |
-| `form-grid` | Champs d'un formulaire : 1 colonne, 2 dès 640 px (`col-span-full` pour un champ long) |
+| `form-grid` | Champs d'un formulaire : 1 colonne, 2 dès 640 px (`col-span-full` pour un champ long), alignés en haut (`align-items: start`), écarts de 1,25 rem × 1,5 rem |
+| `form-legend` | `legend` d'un `fieldset` dans une carte (Identité, Contact… du formulaire patient) : pastille d'icône dorée et titre de 1,125 rem sur un filet `line` portant un court segment doré (décoratif) ; la légende flotte sur toute la largeur, l'élément suivant (`form-grid`) passe dessous |
 | `form-actions` | Boutons d'un formulaire sous un filet : pleine largeur et empilés sur téléphone, en ligne dès 640 px (ordre du DOM = ordre visuel) |
 | `text-link` | Lien dans un texte : action à l'encre, souligné, soulignement doré et épaissi au survol |
 | `data-table-wrap` | Cadre de carte d'un tableau, qui défile seul en largeur si besoin (jamais la page). Filet de sécurité : un tableau est conçu pour tenir à 360 px (colonnes courtes, blocs sur téléphone) |
@@ -241,6 +245,8 @@ de `tokens.css` ; une teinte ajoutée sans association vérifiée fait échouer 
 | `danger` sur `danger-soft` | titre du résumé d'erreurs | 5,99:1 |
 | `disabled-ink` sur `disabled` | bouton ou champ désactivé | 6,35:1 |
 | `field` sur `canvas` | bordure de champ (≥ 3:1) | 3,78:1 |
+| `danger` sur `danger-soft` | bordure et contour de focus d'un champ invalide, sur son fond d'erreur (≥ 3:1) | 5,99:1 |
+| `danger-strong` sur `danger-soft` | bordure d'un champ invalide survolé (≥ 3:1) | 7,90:1 |
 | `primary` sur `canvas` | contour de focus (≥ 3:1) | 13,89:1 |
 
 Le texte désactivé est tenu à 4,5:1 bien que WCAG l'exempte. Le texte courant fait 16 px et suit le

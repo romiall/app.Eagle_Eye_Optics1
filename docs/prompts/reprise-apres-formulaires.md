@@ -1,0 +1,29 @@
+# Prompt de reprise après le chantier « présentation des formulaires » (2026-10-28)
+
+À coller dans une NOUVELLE discussion Claude Code ouverte sur le dossier local du projet (poste Windows). Ce chantier est indépendant du hors-ligne : il part de `origin/main` et ne touche aucune logique métier.
+
+```text
+Tu reprends, sur ma machine locale (Claude Code, poste Windows), le développement de l'application Eagle's Eye Optics Medical (cabinet d'optique : patients, consultations, ventes, caisse, stock). Réponds en français. Lis d'abord CLAUDE.md, puis va droit aux fichiers cités ci-dessous : ne relis pas le dépôt.
+
+ÉTAT AU 2026-10-28 (fin du chantier « présentation des formulaires »)
+- Branche : `claude/formulaires-presentation`, partie de `origin/main` (966b5a8), poussée sur `origin` ; PR à ouvrir à la main (gh n'est pas installé) : https://github.com/romiall/app.Eagle_Eye_Optics2/pull/new/claude/formulaires-presentation. CI : verte sur le dernier commit (API publique, runs de la branche). Ne fusionne rien sans mon accord.
+- DEMANDE DE DÉPART (mes mots) : « Les champs des formulaires sont mal alignés. Ce formulaire n'inspire pas grand-chose. On peut encore améliorer légèrement la présentation de certains champs. » Page de départ : « Nouveau patient ».
+- CAUSE DU DÉSALIGNEMENT : dans `FieldShell`, l'aide était placée ENTRE l'étiquette et la saisie ; dans une rangée à deux colonnes, la saisie d'un champ avec aide descendait plus bas que celle de son voisin. Correction à la racine (composants partagés, donc tous les formulaires) : libellé, saisie, puis aide et erreur SOUS la saisie ; `.form-grid` aligné en haut ; un bouton posé à côté d'un champ (recherche, filtre) prend `.field-action` (ou est enfant de `.toolbar`) pour rester aligné sur la saisie via `--field-label-offset`.
+- PRÉSENTATION : étiquette 14 px demi-gras (`.field-label`, devient `gold-ink` au focus), « (obligatoire) » plus discret, saisies à fond `danger-soft` + bordure et anneau rouges quand invalides, focus propre aux champs (`.field-control:focus-visible` : contour de 2 px à l'encre, rouge si invalide, halo doré décoratif ; règle HORS couche, sinon le focus commun la recouvre), liste déroulante à chevron décoratif (`appearance-none`), `TextField icon` (téléphone du formulaire patient), pastille « FCFA » du `MoneyField`, légendes de carte du formulaire patient (`.form-legend` : pastille d'icône, titre, filet portant un court segment doré), icône ✓ sur « Enregistrer le patient » / « Enregistrer les modifications », lien « chercher dans la liste » sans ligne de 44 px qui écartait les lignes du texte. Détail : docs/implementation/shell.md.
+- BUG ANNEXE CORRIGÉ : `CheckboxGroup` et `YesNoField` portaient `m-0`, qui annulait l'espacement `space-y-*` du parent (le bloc suivant touchait les cases : voir « Créer un compte »).
+- PREUVES : captures avant/après (Edge, 1280 et 360 px) de 12 écrans dans le dossier de notes des sessions ; tests : tests/frontend/components/fields.test.ts (ordre des éléments, icône, chevron, états), tests/frontend/shell/form-styles.test.ts (contrat de base.css : focus hors couche, décalage `--field-label-offset`), tests/frontend/shell/palette.test.ts (deux associations d'erreur ajoutées), tests/e2e/patients.spec.ts (alignement mesuré dans le navigateur).
+- NON FAIT / SUITE POSSIBLE : l'écran public de déverrouillage (`UnlockPage`, branche `claude/deverrouillage-hors-ligne`) n'a été vérifié que par lecture (mêmes composants et mêmes props que la connexion : rien à changer) ; reprendre `.form-legend` pour les cartes de formulaires des paramètres (`SectionCard` titrée) si je le demande ; barre d'actions collante sur téléphone écartée (elle masquerait la navigation du bas) ; une étiquette qui passe sur deux lignes dans une rangée à deux colonnes décale encore la saisie voisine (aucun cas connu, la solution serait une sous-grille CSS).
+
+À FAIRE EN PREMIER
+1. `git status`, `git fetch --all --prune`, état de la CI de `claude/formulaires-presentation` par l'API publique (/repos/romiall/app.Eagle_Eye_Optics2/actions/runs?branch=claude/formulaires-presentation ; 60 requêtes par heure sans compte : espace les appels).
+2. Si je te demande d'étendre le style à d'autres formulaires : lis docs/implementation/shell.md (tableaux « Composants » et « Classes de mise en page »), puis modifie les composants partagés (resources/frontend/components/form/), jamais un écran à la fois.
+
+RÈGLES
+- Données fictives seulement (dépôt public) ; aucun secret ni .env versionné ; libellés français inchangés (les e2e retrouvent les champs par leur nom accessible : « Nom (obligatoire) », « Prénom(s) », « Sexe », « Date de naissance », « Téléphone principal », « Enregistrer le patient ») ; aucune dépendance ni police ni ressource externe ; accessibilité d'abord (étiquettes liées, aria-describedby, contrastes vérifiés par palette.test.ts, focus visible, 360 px).
+- Une branche `claude/…` par chantier, poussée sur `origin`, une PR vers `main`, CI verte avant de me rendre la main ; demande-moi avant toute action irréversible (fusion, push --force, déploiement).
+- Une seule session de développement à la fois par dossier : un worktree séparé (`git worktree add`) évite de marcher sur une autre session ; dans ce cas, ports Playwright (`EEO_E2E_PORT`) et base (`EEO_E2E_DB_DATABASE`, nom en `eeo_*_test`) distincts.
+- Économie de jetons : une phase de code entière, puis UNE vérification transversale (`bash tools/dev/phase-check.sh --only vue-tsc,eslint,prettier,vitest,build` puis les e2e concernés). Poste Windows : exporter dans la même commande EEO_TEST_DB_PORT=3316, OPENSSL_CONF='C:\php84\extras\ssl\openssl.cnf' et PLAYWRIGHT_CHROMIUM_EXECUTABLE='C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe' ; ne jamais lancer `playwright install`.
+
+À LA FIN
+PR (lien prêt si je dois l'ouvrir), CI verte, résumé court en français (ce qui est prouvé, ce qui reste, ce dont tu as besoin de moi).
+```

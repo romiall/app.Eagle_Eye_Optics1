@@ -134,9 +134,23 @@ export function deviceSyncOrNull(): DeviceSync | null {
  * fermé, le coffre fermé ou le compartiment financier fermé pour la session. Lecture seule : aucune écriture ici.
  */
 export async function localFinancialFacts(): Promise<LocalFactRecord[]> {
+  return localFactsOf('FINANCIAL')
+}
+
+/**
+ * Faits ADMINISTRATIFS enregistrés sur CE poste (fiches patient créées ou modifiées ici), avec l'état de leur commande :
+ * mêmes conditions que les faits financiers (module ouvert, coffre ouvert, compartiment ouvert pour la session).
+ */
+export async function localAdministrativeFacts(): Promise<LocalFactRecord[]> {
+  return localFactsOf('ADMINISTRATIVE')
+}
+
+async function localFactsOf(
+  compartment: 'FINANCIAL' | 'ADMINISTRATIVE',
+): Promise<LocalFactRecord[]> {
   if (!offlineModuleOpen() || instance === null || state.value.session === null) return []
   try {
-    return await instance.localFacts('FINANCIAL')
+    return await instance.localFacts(compartment)
   } catch (error) {
     if (isVaultError(error)) return []
     throw error

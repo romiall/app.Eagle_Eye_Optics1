@@ -148,7 +148,13 @@ export function createEeoRouter(history: RouterHistory = createWebHistory()): Ro
         path: '/patients',
         name: 'patients',
         component: PatientListPage,
-        meta: { title: 'Patients', permissions: ['patient.read'], module: 'patients' },
+        // Recherche : le serveur, et à défaut les fiches de CE poste (`searchPatients` avec `includeLocal`).
+        meta: {
+          title: 'Patients',
+          permissions: ['patient.read'],
+          module: 'patients',
+          offlineCapable: true,
+        },
       },
       {
         path: '/patients/nouveau',
@@ -166,13 +172,25 @@ export function createEeoRouter(history: RouterHistory = createWebHistory()): Ro
         path: `/patients/${ULID_ID}`,
         name: 'patient',
         component: PatientViewPage,
-        meta: { title: 'Dossier patient', permissions: ['patient.read'], module: 'patients' },
+        // Fiche : le serveur, et à défaut la copie de CE poste (`getPatient`) ; les onglets du serveur sont masqués.
+        meta: {
+          title: 'Dossier patient',
+          permissions: ['patient.read'],
+          module: 'patients',
+          offlineCapable: true,
+        },
       },
       {
         path: `/patients/${ULID_ID}/modifier`,
         name: 'patient-modifier',
         component: PatientEditPage,
-        meta: { title: 'Modifier le patient', permissions: ['patient.update'], module: 'patients' },
+        // Modification d'une fiche de ce poste : `UpdatePatient` s'enregistre sur le poste.
+        meta: {
+          title: 'Modifier le patient',
+          permissions: ['patient.update'],
+          module: 'patients',
+          offlineCapable: true,
+        },
       },
       {
         // Onglet « Activité » du dossier : visites, et selon les droits du compte, examens, ordonnances

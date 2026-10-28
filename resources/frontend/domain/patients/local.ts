@@ -1,0 +1,188 @@
+import type {
+  Patient,
+  PatientPage,
+  PatientRecordsSex,
+  PatientSummary,
+} from '../contracts/generated'
+
+import { searchTerm } from './duplicates'
+import { SEX_CODES } from './identity'
+
+/**
+ * Fiches patient enregistrées sur CE poste (hors ligne ou pas encore consolidées), reconstruites par REJEU des faits
+ * du journal local, dans l'ordre : `CreatePatient` pose la fiche, chaque `UpdatePatient` y applique ses champs. Un fait
+ * ne change jamais ; rejouer tous les faits donne la même fiche à chaque lecture, quel que soit le nombre de
+ * modifications (la projection de tête du poste ne garde que la dernière charge d'une modification).
+ *
+ * Seules les fiches CRÉÉES sur ce poste se reconstruisent : une fiche du serveur modifiée sur le poste n'a pas de base
+ * locale (l'écran la lit sur le serveur). Règles pures : ni Vue, ni coffre, ni réseau (typage structurel du fait).
+ */
+export interface LocalPatientFact {
+  commandName: string
+  entityId: string
+  payload: Readonly<Record<string, unknown>>
+  number: string | null
+  recordedAt: string
+}
+
+export interface LocalPatientEntry {
+  fact: LocalPatientFact
+  /** État de synchronisation de la commande de ce fait (`local`, `pending`, `acknowledged`, `conflict`…). */
+  state: string
+}
+
+export interface LocalPatient {
+  patient: Patient
+  /** État de la DERNIÈRE commande qui a touché la fiche. */
+  state: string
+}
+
+/** Une proposition du poste qui n'est ni consolidée ni rejetée : elle prime sur le serveur (F10, AT42). */
+export function isUnconsolidated(state: string): boolean {
+  return state !== 'acknowledged' && state !== 'rejected'
+}
+
+function text(value: unknown): string | null {
+  return typeof value === 'string' ? value : null
+}
+
+function sexOf(value: unknown, fallback: PatientRecordsSex): PatientRecordsSex {
+  return SEX_CODES.find((code) => code === value) ?? fallback
+}
+
+function created(fact: LocalPatientFact): Patient {
+  const payload = fact.payload
+  return {
+    id: fact.entityId,
+    record_number: text(payload['record_number']) ?? fact.number ?? '',
+    last_name: text(payload['last_name']) ?? '',
+    first_names: text(payload['first_names']),
+    sex: sexOf(payload['sex'], 'UNKNOWN'),
+    birth_date: text(payload['birth_date']),
+    phone_primary: text(payload['phone_primary']),
+    archived: false,
+    merged_into_patient_id: null,
+    version: 1,
+    birth_date_missing_reason: text(payload['birth_date_missing_reason']),
+    phone_secondary: text(payload['phone_secondary']),
+    phone_missing_reason: text(payload['phone_missing_reason']),
+    address: text(payload['address']),
+    profession: text(payload['profession']),
+    guardian_contact: null,
+    legacy_record: payload['legacy_record'] === true,
+    first_known_visit_on: text(payload['first_known_visit_on']),
+    first_visit_certified: payload['first_visit_certified'] === true,
+    legacy_record_number: text(payload['legacy_record_number']),
+    created_at: fact.recordedAt,
+    updated_at: fact.recordedAt,
+  }
+}
+
+/** Applique les champs d'identité d'un `UpdatePatient` (un champ vidé vaut null ; le nom ne devient jamais vide). */
+function updated(base: Patient, fact: LocalPatientFact): Patient {
+  const changes = fact.payload['changes']
+  if (typeof changes !== 'object' || changes === null || Array.isArray(changes)) return base
+  const fields = changes as Record<string, unknown>
+  const next: Patient = { ...base, version: base.version + 1, updated_at: fact.recordedAt }
+  if ('last_name' in fields) next.last_name = text(fields['last_name']) ?? base.last_name
+  if ('first_names' in fields) next.first_names = text(fields['first_names'])
+  if ('sex' in fields) next.sex = sexOf(fields['sex'], base.sex)
+  if ('birth_date' in fields) next.birth_date = text(fields['birth_date'])
+  if ('birth_date_missing_reason' in fields) {
+    next.birth_date_missing_reason = text(fields['birth_date_missing_reason'])
+  }
+  if ('phone_primary' in fields) next.phone_primary = text(fields['phone_primary'])
+  if ('phone_secondary' in fields) next.phone_secondary = text(fields['phone_secondary'])
+  if ('phone_missing_reason' in fields) {
+    next.phone_missing_reason = text(fields['phone_missing_reason'])
+  }
+  if ('address' in fields) next.address = text(fields['address'])
+  if ('profession' in fields) next.profession = text(fields['profession'])
+  return next
+}
+
+/** Fiches reconstruites, par identifiant ; les faits sont donnés dans l'ordre du journal. */
+export function foldLocalPatients(
+  entries: readonly LocalPatientEntry[],
+): Map<string, LocalPatient> {
+  const patients = new Map<string, LocalPatient>()
+  for (const { fact, state } of entries) {
+    if (fact.commandName === 'CreatePatient') {
+      patients.set(fact.entityId, { patient: created(fact), state })
+    } else if (fact.commandName === 'UpdatePatient') {
+      const current = patients.get(fact.entityId)
+      // Fiche du serveur modifiée sur ce poste : aucune base locale à rejouer.
+      if (current !== undefined)
+        patients.set(fact.entityId, { patient: updated(current.patient, fact), state })
+    }
+  }
+  return patients
+}
+
+export function patientSummary(patient: Patient): PatientSummary {
+  return {
+    id: patient.id,
+    record_number: patient.record_number,
+    last_name: patient.last_name,
+    first_names: patient.first_names,
+    sex: patient.sex,
+    birth_date: patient.birth_date,
+    phone_primary: patient.phone_primary,
+    archived: patient.archived,
+    merged_into_patient_id: patient.merged_into_patient_id,
+    version: patient.version,
+  }
+}
+
+/** Minuscules sans accents : « Éloïse » et « eloise » se retrouvent. */
+function plain(value: string): string {
+  return value.normalize('NFD').replace(/\p{M}/gu, '').toLowerCase()
+}
+
+function digitsOf(value: string): string {
+  return value.replace(/\D/g, '')
+}
+
+/**
+ * Recherche LOCALE, jumelle approchée de celle du serveur : chaque mot de la saisie figure dans le nom ou les prénoms
+ * (casse, accents et ordre des mots ignorés), ou les chiffres saisis figurent dans un téléphone, ou la saisie figure
+ * dans le numéro de dossier. Elle ne porte que sur les fiches de ce poste : un résultat vide n'affirme jamais l'absence.
+ */
+export function matchesLocalSearch(patient: Patient, query: string): boolean {
+  const term = searchTerm(query)
+  if (!term.ok) return false
+  const wanted = plain(term.text)
+  const name = plain(`${patient.last_name} ${patient.first_names ?? ''}`)
+  if (wanted.split(' ').every((word) => name.includes(word))) return true
+  const digits = digitsOf(term.text)
+  if (
+    digits.length >= 2 &&
+    [patient.phone_primary, patient.phone_secondary].some(
+      (phone) => phone !== null && digitsOf(phone).includes(digits),
+    )
+  ) {
+    return true
+  }
+  return plain(patient.record_number).includes(wanted)
+}
+
+const PAGE_SIZE = 25
+
+/** Page de résultats locaux (25 par page), triés par nom puis prénoms ; `total` ne compte que les fiches de ce poste. */
+export function localPatientPage(patients: readonly Patient[], page: number): PatientPage {
+  const sorted = [...patients].sort(
+    (left, right) =>
+      left.last_name.localeCompare(right.last_name, 'fr') ||
+      (left.first_names ?? '').localeCompare(right.first_names ?? '', 'fr'),
+  )
+  const start = (page - 1) * PAGE_SIZE
+  return {
+    data: sorted.slice(start, start + PAGE_SIZE).map(patientSummary),
+    meta: {
+      current_page: page,
+      last_page: Math.max(1, Math.ceil(sorted.length / PAGE_SIZE)),
+      per_page: PAGE_SIZE,
+      total: sorted.length,
+    },
+  }
+}

@@ -42,9 +42,11 @@ const props = withDefaults(
 
 const emit = defineEmits<{ page: [page: number]; summary: [text: string] }>()
 
-const read = usePatientRead<PatientPage>(() => searchPatients(props.query, props.page), {
-  isEmpty: (result) => result.data.length === 0,
-})
+// Serveur injoignable : les fiches de CE poste répondent (jamais un « aucun résultat » affirmé : `live` faux).
+const read = usePatientRead<PatientPage>(
+  () => searchPatients(props.query, props.page, { includeLocal: true }),
+  { isEmpty: (result) => result.data.length === 0 },
+)
 
 const heading = ref<HTMLElement | null>(null)
 const today = clinicToday()

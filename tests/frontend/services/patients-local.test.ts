@@ -50,8 +50,6 @@ function setLocal(id: string, lastName: string, record: string, state: string): 
 }
 
 function summary(id: string, lastName: string, record: string) {
-  const { id: _id, ...rest } = patient(id, lastName, record)
-  void rest
   return {
     id,
     record_number: record,

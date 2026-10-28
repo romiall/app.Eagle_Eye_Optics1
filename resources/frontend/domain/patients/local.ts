@@ -84,7 +84,8 @@ function updated(base: Patient, fact: LocalPatientFact): Patient {
   if (typeof changes !== 'object' || changes === null || Array.isArray(changes)) return base
   const fields = changes as Record<string, unknown>
   const next: Patient = { ...base, version: base.version + 1, updated_at: fact.recordedAt }
-  if ('last_name' in fields) next.last_name = text(fields['last_name']) ?? base.last_name
+  const lastName = text(fields['last_name'])
+  if (lastName !== null && lastName.trim() !== '') next.last_name = lastName
   if ('first_names' in fields) next.first_names = text(fields['first_names'])
   if ('sex' in fields) next.sex = sexOf(fields['sex'], base.sex)
   if ('birth_date' in fields) next.birth_date = text(fields['birth_date'])

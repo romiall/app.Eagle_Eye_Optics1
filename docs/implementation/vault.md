@@ -585,7 +585,7 @@ worker). Règles : `tests/frontend/shell/local-identity.test.ts`, `tests/fronten
   du serveur, retenu dans `vault_meta.clinic_summary` (non secret, écrit même coffre verrouillé, forme contrôlée à la
   lecture : une valeur altérée est ignorée). `offline` figure toujours dans les modules d'une session locale.
 - **Écrans** : la méta `offlineCapable` marque les écrans qui savent travailler sur le poste (accueil, aide, accès refusé,
-  introuvable, nouveau patient, « Poste »). Les autres restent fermés en session locale : l'accueil dit « « X » demande le
+  introuvable, « Poste », et les écrans patient de la section « Implémentation (A1) »). Les autres restent fermés en session locale : l'accueil dit « « X » demande le
   serveur ». Les droits du grant s'appliquent comme en ligne (`acces-refuse`).
 - **Coquille démontée (D14)** : sans identité et avec un coffre à ouvrir, `RouterView` n'est plus rendu (menu, compte,
   déconnexion et contenu disparaissent), seul l'écran de déverrouillage subsiste ; les erreurs du coffre sont traduites
@@ -602,8 +602,9 @@ worker). Règles : `tests/frontend/shell/local-identity.test.ts`, `tests/fronten
 
 ### Limites déclarées
 
-1. **Lecture locale des écrans** : seuls les écrans listés ci-dessus s'ouvrent hors serveur ; la fiche patient, la liste, la
-   recherche, le catalogue et la facture relisent encore le serveur (écart 1 de G1, lot suivant).
+1. **Lecture locale des écrans** : seuls les écrans listés ci-dessus s'ouvrent hors serveur. La fiche patient, la recherche et
+   la modification d'une fiche du poste sont faites (A1, plus bas) ; le catalogue, la lecture d'une facture et la création
+   d'une facture sans réseau relisent encore le serveur (écart 1 de G1, tranches suivantes).
 2. **Identité du cabinet des PDF** : après un redémarrage sans serveur, `currentDocumentClinic` retombe sur le nom du cabinet
    retenu (les autres mentions restent « à renseigner » sur un document de test). Les pièces financières émises gardent leur
    identité figée. Les mentions complètes hors ligne se retiennent avec les écrans locaux.
@@ -623,3 +624,48 @@ worker). Règles : `tests/frontend/shell/local-identity.test.ts`, `tests/fronten
    l'intermittence de `device-recovery.spec.ts` (« Conflits à revoir : 1 ») sur un serveur de test lent, confirmée par la
    trace (envoi de 4 s) et par le même échec sur le code d'avant ce chantier ; le test attend désormais la fin de
    l'échange d'ouverture avant de couper le réseau. À traiter avec G2 (concurrence).
+
+## Implémentation (A1) — lecture locale des fiches patient — 2026-10-28
+
+Première tranche de l'écart 1 de G1 (lecture locale des écrans patient et facture) : la fiche d'un patient, la recherche et la
+modification d'une fiche répondent depuis le coffre quand le serveur ne répond pas. Preuve en navigateur réel :
+`tests/e2e/offline-start.spec.ts` (serveur RÉELLEMENT arrêté, trois fermetures complètes). Règles pures :
+`tests/frontend/patients/local-patients.test.ts` ; lectures : `tests/frontend/services/patients-local.test.ts` ; écran de
+création : `tests/frontend/patients/create-page.test.ts`.
+
+### Comportement
+
+- **Source** : les fiches de CE poste sont reconstruites par REJEU des faits ADMINISTRATIFS du journal local
+  (`domain/patients/local.ts`, `app/services/localPatients.ts`, `localAdministrativeFacts`) : `CreatePatient` pose la fiche
+  (numéro de dossier de la plage du poste), chaque `UpdatePatient` y applique ses champs (champ vidé : null ; le nom ne devient
+  jamais vide). Un fait ne change jamais : rejouer tous les faits donne la même fiche à chaque lecture, alors que la projection
+  de tête du journal ne garde que la dernière charge d'une modification. La version affichée vaut « 1 + nombre de
+  modifications », comme le compteur d'entité du journal (la modification suivante attend donc la bonne version).
+- **Priorité** (F10, AT42) : une proposition du poste ni consolidée ni rejetée (`local`, `pending`, `waiting_dependency`,
+  `conflict`) PRIME sur le serveur, qui ne la connaît pas encore. Consolidée (`acknowledged`), le serveur fait foi quand il
+  répond, et la copie du poste répond quand il ne répond pas. Une erreur du serveur (404, 403…) n'est jamais remplacée par la
+  copie du poste.
+- **Fraîcheur** : une lecture du poste porte `serverAsOf` null et `live` faux. La fiche et la liste disent « Données de ce poste
+  seulement : le serveur n'a pas été consulté » ; un résultat vide n'est jamais « Aucun résultat » (« Recherche serveur
+  indisponible »), car il ne dit rien de la clinique entière.
+- **Recherche** : `searchPatients(query, page, { includeLocal: true })`, demandé par l'écran « Patients » seulement. Serveur
+  injoignable : les fiches du poste qui correspondent (nom et prénoms sans casse, accents ni ordre des mots ; téléphone par ses
+  chiffres ; numéro de dossier ; 25 par page, triées par nom). Serveur joint : les fiches du poste pas encore consolidées
+  s'ajoutent en tête de la première page. La détection des doublons à la création n'utilise jamais le poste : sans le serveur,
+  elle dit « Vérification des doublons impossible » et demande une confirmation.
+- **Écrans** (`offlineCapable`) : liste et recherche, fiche, modification. En session locale, la fiche ne montre que l'onglet
+  « Identité » et l'action « Modifier » ; arrivée, facture, fusion, export, activité et prescriptions (serveur) ne sont pas
+  offerts (aucun lien vers un écran fermé). Après un enregistrement sur le poste, « Ouvrir la fiche » remplace « Annuler » à
+  côté du statut « Enregistré sur ce poste ».
+
+### Limites déclarées
+
+1. **Fiches du poste seulement** : seules les fiches CRÉÉES sur ce poste se reconstruisent. Une fiche du serveur modifiée sur le
+   poste n'a pas de base locale (sans le serveur, elle est introuvable) et l'annuaire du serveur n'est pas lu (projections du
+   pull non lues : lot suivant).
+2. **Pas de doublons hors ligne** : la ressemblance se cherche sur le serveur seulement (voulu : « aucune fiche proche » sans le
+   serveur serait une absence affirmée à tort).
+3. **Recherche approchée** : jumelle simplifiée de celle du serveur (mêmes règles de casse, d'accents et de chiffres), sans
+   classement de pertinence ; l'ordre est alphabétique.
+4. **Facture** : « Créer une facture » reste fermé en session locale (tranches suivantes : lecture locale de la facture,
+   catalogue et règles de vente locaux, éditeur de facture sur le poste).

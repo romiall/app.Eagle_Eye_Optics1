@@ -26,11 +26,11 @@ import { newProfileDirectory, openProfile, removeProfileDirectory } from './supp
  *  2. le navigateur est fermé ENTIÈREMENT, le serveur ARRÊTÉ, puis le navigateur rouvert : la coquille vient du service
  *     worker, l'écran public de déverrouillage passe avant la connexion, le profil se déverrouille, le profil du coffre
  *     devient l'identité d'action ; un écran qui lit le serveur reste fermé, un patient est créé sur le poste (numéro de
- *     sa plage) ;
- *  3. verrouiller le poste démonte la coquille ; une nouvelle fermeture complète, serveur toujours arrêté, retrouve la
- *     pièce dans le coffre ;
- *  4. le serveur revient : la personne se connecte depuis l'en-tête, le poste envoie sa pièce, et le serveur la connaît
- *     avec un numéro de la plage du poste.
+ *     sa plage), sa fiche s'ouvre et se modifie SUR le poste, et la recherche répond avec les fiches de ce poste (A1) ;
+ *  3. verrouiller le poste démonte la coquille ; une nouvelle fermeture complète, serveur toujours arrêté, retrouve les
+ *     pièces dans le coffre, et la fiche (rejeu des faits) par la recherche locale ;
+ *  4. le serveur revient : la personne se connecte depuis l'en-tête, le poste envoie ses pièces, et le serveur connaît
+ *     la fiche avec un numéro de la plage du poste et la profession modifiée sur le poste.
  *
  * Données FICTIVES. Le module « offline » est ouvert par prepare-env.mjs.
  */
@@ -52,6 +52,21 @@ async function capture(page: Page, name: string): Promise<void> {
 
 function syncSection(page: Page) {
   return page.locator('section[aria-labelledby="titre-synchronisation"]')
+}
+
+/**
+ * Retrouve une fiche par la recherche de l'écran « Patients » puis l'ouvre : serveur injoignable, seules les fiches de ce
+ * poste répondent, et l'écran le dit (jamais « aucun résultat » affirmé pour toute la clinique).
+ */
+async function openFromSearch(page: Page, name: string): Promise<void> {
+  await navigateInApp(page, '/patients')
+  await page.getByRole('searchbox', { name: 'Rechercher un patient' }).fill(name)
+  await page.getByRole('button', { name: 'Rechercher' }).click()
+  const main = page.getByRole('main')
+  await expect(main).toContainText('Données de ce poste seulement')
+  await main.getByRole('link', { name: new RegExp(name) }).click()
+  await expect(page).toHaveURL(/\/patients\/[0-9A-HJKMNP-TV-Z]{26}$/)
+  await expect(page.getByRole('heading', { level: 1 })).toContainText(name)
 }
 
 /** Déverrouille depuis l'écran PUBLIC (un seul profil sur ce poste : présélectionné). */
@@ -130,12 +145,12 @@ test.describe('démarrage sans réseau : déverrouillage public du poste (AT36, 
       await capture(page, '2-accueil-profil-local')
       await expect(page).toHaveURL(/\/$/)
 
-      // Un écran qui lit le serveur reste fermé, l'accueil l'explique.
+      // Un écran qui lit le serveur reste fermé, l'accueil l'explique (la liste des factures n'est pas encore locale).
       await page.evaluate(() => {
-        window.history.pushState({}, '', '/patients')
+        window.history.pushState({}, '', '/ventes/factures')
         window.dispatchEvent(new PopStateEvent('popstate'))
       })
-      await expect(page.getByText(/« Patients » demande le serveur/)).toBeVisible()
+      await expect(page.getByText(/« Factures » demande le serveur/)).toBeVisible()
       await expect(page).toHaveURL(/\/$/)
 
       // Un patient est créé sur le poste, sans le serveur (numéro de dossier de la plage du poste).
@@ -153,7 +168,30 @@ test.describe('démarrage sans réseau : déverrouillage public du poste (AT36, 
       await expect(page.getByText(/Enregistré sur ce poste/).first()).toBeVisible()
       await expect(page.getByText(/pièces? en attente de synchronisation/).first()).toBeVisible()
 
-      // --- 3. Verrouiller démonte la coquille ; une nouvelle fermeture complète retrouve la pièce ------------------
+      // A1 : la fiche créée s'ouvre SUR le poste (le serveur est arrêté), sans onglet ni action qui lirait le serveur.
+      await page.getByRole('link', { name: 'Ouvrir la fiche' }).click()
+      await expect(page).toHaveURL(/\/patients\/[0-9A-HJKMNP-TV-Z]{26}$/)
+      const filePath = new URL(page.url()).pathname
+      await expect(page.getByRole('heading', { level: 1 })).toContainText(patientName)
+      const main = page.getByRole('main')
+      await expect(main).toContainText('Données de ce poste seulement')
+      const tabs = page.getByRole('navigation', { name: 'Sections du dossier patient' })
+      await expect(tabs.getByRole('link')).toHaveText(['Identité'])
+      for (const closed of ['Enregistrer une arrivée', 'Créer une facture']) {
+        await expect(main.getByRole('link', { name: closed })).toHaveCount(0)
+      }
+      await capture(page, '3-fiche-sur-le-poste')
+      // Modifiée sur le poste : la profession s'ajoute à la fiche (rejeu de la création puis de la modification).
+      await page.getByRole('link', { name: 'Modifier' }).click()
+      await page.getByLabel('Profession').fill('Enseignante')
+      await page.getByRole('button', { name: 'Enregistrer les modifications' }).click()
+      await expect(page.getByText(/Enregistré sur ce poste/).first()).toBeVisible()
+      await navigateInApp(page, filePath)
+      await expect(main).toContainText('Enseignante')
+      await openFromSearch(page, patientName)
+      await expect(main).toContainText('Enseignante')
+
+      // --- 3. Verrouiller démonte la coquille ; une nouvelle fermeture complète retrouve les pièces ----------------
       await page.getByRole('button', { name: 'Verrouiller le poste' }).click()
       await expect(page).toHaveURL(/\/deverrouiller(\?.*)?$/)
       await expect(
@@ -169,9 +207,12 @@ test.describe('démarrage sans réseau : déverrouillage public du poste (AT36, 
       await expect(page).toHaveURL(/\/deverrouiller(\?.*)?$/)
       await unlockFromPublicScreen(page, VAULT_SECRET)
       await expect(page.getByRole('heading', { level: 1, name: /^Bonjour / })).toBeVisible()
+      // A1 : après la fermeture complète, la fiche est relue DANS le coffre (création et modification rejouées).
+      await openFromSearch(page, patientName)
+      await expect(page.getByRole('main')).toContainText('Enseignante')
       await navigateInApp(page, '/parametres/poste')
-      // La pièce est retrouvée dans le coffre : à envoyer, ou envoyée sans confirmation (le poste a tenté un échange
-      // pendant que le serveur était arrêté) ; jamais consolidée, jamais en conflit.
+      // Les pièces sont retrouvées dans le coffre (création, modification) : à envoyer, ou envoyées sans confirmation
+      // (le poste a tenté un échange pendant que le serveur était arrêté) ; jamais consolidées, jamais en conflit.
       await expect(syncSection(page)).toContainText(/pas encore envoyées : \d+/)
       await expect
         .poll(async () => {
@@ -179,7 +220,7 @@ test.describe('démarrage sans réseau : déverrouillage public du poste (AT36, 
           const count = (pattern: RegExp): number => Number(pattern.exec(text)?.[1] ?? Number.NaN)
           return count(/pas encore envoyées : (\d+)/) + count(/en attente de confirmation : (\d+)/)
         })
-        .toBe(1)
+        .toBe(2)
       await expect(syncSection(page)).toContainText(/Conflits à revoir : 0/)
       const foreign = foreignRequests(requests, ORIGIN)
       expect(foreign, 'aucune requête hors de l’origine, démarrage compris').toEqual([])
@@ -220,6 +261,11 @@ test.describe('démarrage sans réseau : déverrouillage public du poste (AT36, 
       const records = await numberRange(page, deviceId, 'PATIENT')
       expect(numberValue(record)).toBeGreaterThanOrEqual(records.start)
       expect(numberValue(record)).toBeLessThanOrEqual(records.end)
+      // La modification faite sur le poste a suivi la création : le serveur connaît la profession.
+      const detail = (await (await request.get(`/api/v1${filePath}`, { headers })).json()) as {
+        data: { profession: string | null }
+      }
+      expect(detail.data.profession).toBe('Enseignante')
 
       // Les ressources de ce poste sont rendues : une seule caisse hors ligne principale détient les numéros financiers.
       expect(journal.head, 'tête du journal lue dans le lot envoyé').not.toBeNull()

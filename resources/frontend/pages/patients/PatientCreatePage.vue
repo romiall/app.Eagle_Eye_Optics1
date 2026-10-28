@@ -9,8 +9,10 @@
  * Enregistrement EN LIGNE : la fiche n'est dite enregistrée qu'après la réponse du serveur
  * (« Synchronisé avec le serveur »), qui attribue le numéro de dossier. Sans réponse, la saisie
  * reste à l'écran et « Réessayer l'enregistrement » reprend la même commande avec la même clé
- * d'idempotence : jamais deux fiches pour une seule saisie. Aucun « Enregistré sur ce poste » avant
- * que le coffre local (O01 à O05) existe.
+ * d'idempotence : jamais deux fiches pour une seule saisie. Sur un poste préparé dont le serveur ne
+ * répond pas, la fiche est enregistrée dans le coffre local (« Enregistré sur ce poste », jamais
+ * « Synchronisé ») et « Ouvrir la fiche » l'ouvre sur le poste, sans le serveur. La recherche des
+ * fiches proches exige toujours le serveur : sans lui, la création sans vérification est confirmée.
  */
 import { computed, nextTick, ref } from 'vue'
 import { RouterLink, useRouter } from 'vue-router'
@@ -63,6 +65,8 @@ const { form, summary, summaryBox, errors, validate, applyServerFailure } = useP
 
 const checking = ref(false)
 const saved = ref(false)
+/** Fiche enregistrée SUR ce poste (poste préparé, serveur non joint) : son identifiant ouvre la fiche sans le serveur. */
+const localPatientId = ref<string | null>(null)
 const confirmation = ref<Confirmation | null>(null)
 /** Ressemblance déjà confirmée pour cette identité : pas de seconde confirmation à l'envoi suivant. */
 let acknowledged: string | null = null
@@ -147,6 +151,7 @@ async function afterOutcome(result: MutationOutcome): Promise<void> {
     case 'saved-local':
       // Commit local durable (poste préparé, O04) : rien n'est dit « synchronisé ».
       saved.value = true
+      localPatientId.value = mutation.effectId('patient_id')
       return
     case 'refused':
       applyServerFailure(result.error)
@@ -247,7 +252,13 @@ async function retry(): Promise<void> {
           :pending-label="checking ? 'Vérification en cours…' : 'Enregistrement en cours…'"
           >Enregistrer le patient</AppButton
         >
-        <LinkButton to="/patients" variant="secondary">Annuler</LinkButton>
+        <LinkButton
+          v-if="localPatientId !== null"
+          :to="{ name: 'patient', params: { id: localPatientId } }"
+          variant="secondary"
+          >Ouvrir la fiche</LinkButton
+        >
+        <LinkButton v-else to="/patients" variant="secondary">Annuler</LinkButton>
         <SaveStatus :state="saveState" :at="recordedAt" :time-zone="timeZone" />
       </div>
     </form>

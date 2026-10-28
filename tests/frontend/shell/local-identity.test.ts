@@ -254,12 +254,12 @@ describe('déverrouillage public du poste', () => {
     await unlock(root, CASHIER_PROFILE, GOOD_SECRET)
     expect(router.currentRoute.value.name).toBe('accueil')
 
-    await router.push('/patients')
+    await router.push('/ventes/factures')
     await flushPromises()
 
     expect(router.currentRoute.value.name).toBe('accueil')
-    expect(offlineRefusal.value).toBe('Patients')
-    expect(root.textContent).toContain('« Patients » demande le serveur')
+    expect(offlineRefusal.value).toBe('Factures')
+    expect(root.textContent).toContain('« Factures » demande le serveur')
     // Un écran dont le droit manque au grant reste refusé comme en ligne.
     await router.push('/parametres/poste')
     await flushPromises()

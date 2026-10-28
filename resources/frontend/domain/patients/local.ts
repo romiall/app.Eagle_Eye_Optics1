@@ -5,6 +5,8 @@ import type {
   PatientSummary,
 } from '../contracts/generated'
 
+import { intDiv } from '../values/integer'
+import { searchKey } from '../values/text'
 import { searchTerm } from './duplicates'
 import { SEX_CODES } from './identity'
 
@@ -135,9 +137,13 @@ export function patientSummary(patient: Patient): PatientSummary {
   }
 }
 
-/** Minuscules sans accents : « Éloïse » et « eloise » se retrouvent. */
+/** Clé de recherche du serveur (minuscules, sans accents ni ponctuation) : « Éloïse » et « eloise » se retrouvent. */
 function plain(value: string): string {
-  return value.normalize('NFD').replace(/\p{M}/gu, '').toLowerCase()
+  try {
+    return searchKey(value)
+  } catch {
+    return ''
+  }
 }
 
 function digitsOf(value: string): string {
@@ -154,7 +160,7 @@ export function matchesLocalSearch(patient: Patient, query: string): boolean {
   if (!term.ok) return false
   const wanted = plain(term.text)
   const name = plain(`${patient.last_name} ${patient.first_names ?? ''}`)
-  if (wanted.split(' ').every((word) => name.includes(word))) return true
+  if (wanted !== '' && wanted.split(' ').every((word) => name.includes(word))) return true
   const digits = digitsOf(term.text)
   if (
     digits.length >= 2 &&
@@ -164,7 +170,7 @@ export function matchesLocalSearch(patient: Patient, query: string): boolean {
   ) {
     return true
   }
-  return plain(patient.record_number).includes(wanted)
+  return wanted !== '' && plain(patient.record_number).includes(wanted)
 }
 
 const PAGE_SIZE = 25
@@ -181,7 +187,7 @@ export function localPatientPage(patients: readonly Patient[], page: number): Pa
     data: sorted.slice(start, start + PAGE_SIZE).map(patientSummary),
     meta: {
       current_page: page,
-      last_page: Math.max(1, Math.ceil(sorted.length / PAGE_SIZE)),
+      last_page: Math.max(1, intDiv(sorted.length + PAGE_SIZE - 1, PAGE_SIZE)),
       per_page: PAGE_SIZE,
       total: sorted.length,
     },

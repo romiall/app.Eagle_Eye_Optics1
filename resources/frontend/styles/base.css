@@ -163,7 +163,9 @@ body {
   /*
    * Barre d'outils (filtres, choix du jour) : empilée sur téléphone, en ligne ensuite. Les champs
    * sont alignés en haut ; le bouton ou le lien posé à côté descend de la hauteur de l'étiquette
-   * (`--field-label-offset`) pour s'aligner sur la saisie, qu'un champ porte une aide ou non.
+   * (`--field-label-offset`) pour s'aligner sur la saisie, qu'un champ porte une aide ou non. Ce
+   * décalage suppose que le bouton partage sa ligne avec le champ : le conteneur d'un champ est
+   * donc souple (`sm:flex-1`, plafonné par `sm:max-w-*`) et ne force pas le retour à la ligne.
    */
   .toolbar {
     display: flex;
@@ -171,7 +173,11 @@ body {
     gap: 0.75rem;
   }
 
-  /* Bouton posé à côté d'un champ hors `.toolbar` (recherche) : même alignement sur la saisie. */
+  /*
+   * Bouton (ou case à cocher) posé à côté d'un champ, hors `.toolbar` ou dans un `div` d'une
+   * barre : même alignement sur la saisie dès 640 px. Sous 640 px la rangée doit être empilée
+   * (`flex-col sm:flex-row`), sinon le décalage garde le bouton trop haut.
+   */
   @media (min-width: 40rem) {
     .field-action {
       margin-top: var(--field-label-offset);
@@ -265,6 +271,13 @@ body {
     width: 2.5rem;
     height: 2px;
     background-color: var(--color-gold);
+  }
+
+  /* Contraste forcé : un fond doré serait ramené à la couleur de fond et trouerait le filet. */
+  @media (forced-colors: active) {
+    .form-legend::after {
+      background-color: CanvasText;
+    }
   }
 
   .form-legend + * {
@@ -440,10 +453,14 @@ body {
 
 /*
  * Champ de saisie (texte, liste, zone de texte : classe `field-control` de `controlClasses`) : le
- * contour de 2 px à l'encre (au rouge d'erreur si le champ est invalide) tient lieu de bordure, le
- * halo doré léger n'est que décoratif (l'indicateur de focus est le contour, ≥ 3:1 sur la surface).
- * Hors couche et plus spécifique que `:focus-visible` : il remplace le contour commun sans jamais
- * le supprimer ; en contraste forcé, le contour reste dessiné.
+ * contour de 2 px à l'encre tient lieu de bordure, le halo doré léger n'est que décoratif
+ * (l'indicateur de focus est le contour, ≥ 3:1 sur la surface). Hors couche et plus spécifique que
+ * `:focus-visible` : il remplace le contour commun sans jamais le supprimer ; en contraste forcé,
+ * le contour reste dessiné.
+ *
+ * Champ invalide : sa bordure et son anneau rouges (2 px) existent déjà au repos ; un contour rouge
+ * posé dessus ne changerait rien. Le focus reprend donc le dessin du focus commun, en rouge : un
+ * contour de 3 px décalé de 2 px, séparé de l'anneau par un liseré blanc.
  */
 .field-control:focus-visible {
   outline: 2px solid var(--color-primary);
@@ -454,8 +471,12 @@ body {
 
 .field-control[aria-invalid='true']:focus-visible {
   outline-color: var(--color-danger);
+  outline-width: 3px;
+  outline-offset: 2px;
   border-color: var(--color-danger);
-  box-shadow: 0 0 0 4px rgb(180 35 24 / 0.18);
+  box-shadow:
+    0 0 0 1px var(--color-danger),
+    0 0 0 2px var(--color-surface);
 }
 
 /*

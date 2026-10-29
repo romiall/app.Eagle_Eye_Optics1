@@ -6,7 +6,7 @@
  */
 export function controlClasses(invalid: boolean, extra = ''): string[] {
   return [
-    'field-control min-h-11 w-full rounded-lg border px-3.5 py-2 text-base leading-6 text-ink shadow-[inset_0_1px_2px_rgb(35_31_32/0.04)]',
+    'field-control min-h-11 w-full rounded-lg border px-3 py-2 text-base leading-6 text-ink shadow-[inset_0_1px_2px_rgb(35_31_32/0.04)]',
     'disabled:cursor-not-allowed disabled:bg-disabled disabled:text-disabled-ink',
     invalid
       ? 'border-danger bg-danger-soft ring-1 ring-danger hover:border-danger-strong'

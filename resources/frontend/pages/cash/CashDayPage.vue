@@ -70,7 +70,7 @@ function signedVariance(amount: number): string {
     <form
       role="search"
       aria-label="Choisir le jour"
-      class="flex flex-wrap items-start gap-3"
+      class="flex flex-col gap-3 sm:flex-row sm:items-start"
       @submit.prevent="show"
     >
       <div class="min-w-0 flex-1">

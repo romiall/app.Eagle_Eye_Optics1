@@ -133,7 +133,7 @@ function isDownloadable(item: ExportRequest): boolean {
       icon="file-plus"
     >
       <form class="toolbar" novalidate @submit.prevent="request">
-        <div class="min-w-0 sm:w-80">
+        <div class="min-w-0 sm:max-w-80 sm:flex-1">
           <SelectField
             v-model="choice"
             label="Contenu de l’export"

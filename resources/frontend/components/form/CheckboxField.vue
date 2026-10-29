@@ -46,7 +46,6 @@ const describedBy = computed(
       />
       <span>{{ props.label }}</span>
     </label>
-    <p v-if="props.hint" :id="hintId" class="text-sm leading-5 text-muted">{{ props.hint }}</p>
     <p
       v-if="props.error"
       :id="errorId"
@@ -54,5 +53,6 @@ const describedBy = computed(
     >
       <span aria-hidden="true" class="shrink-0">⚠ </span><span>{{ props.error }}</span>
     </p>
+    <p v-if="props.hint" :id="hintId" class="text-sm leading-5 text-muted">{{ props.hint }}</p>
   </div>
 </template>

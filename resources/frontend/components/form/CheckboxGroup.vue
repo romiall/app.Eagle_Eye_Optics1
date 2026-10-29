@@ -73,15 +73,15 @@ function toggle(option: CheckboxOption, checked: boolean): void {
         <slot name="option" :option="option" :checked="props.modelValue.includes(option.value)" />
       </li>
     </ul>
-    <p v-if="props.hint" :id="hintId" class="mt-1.5 text-sm leading-5 text-muted">
-      {{ props.hint }}
-    </p>
     <p
       v-if="props.error"
       :id="errorId"
       class="mt-1.5 flex items-start gap-1.5 text-sm leading-5 font-medium text-danger"
     >
       <span aria-hidden="true" class="shrink-0">⚠ </span><span>{{ props.error }}</span>
+    </p>
+    <p v-if="props.hint" :id="hintId" class="mt-1.5 text-sm leading-5 text-muted">
+      {{ props.hint }}
     </p>
   </fieldset>
 </template>

@@ -19,12 +19,15 @@ export async function signIn(page: Page, role: string): Promise<void> {
 /** Confirme le mot de passe de la gérante si le serveur le demande (423), puis attend le succès. */
 export async function confirmPasswordIfAsked(page: Page, success: Locator): Promise<void> {
   const dialog = page.getByRole('dialog', { name: 'Confirmer votre mot de passe' })
-  await expect(dialog.or(success).first()).toBeVisible()
+  // L'inscription et la préparation d'un poste demandent des calculs de signature : le serveur de test, qui traite une
+  // requête à la fois, peut dépasser les 20 s habituelles sur un poste chargé.
+  const slow = { timeout: 60_000 }
+  await expect(dialog.or(success).first()).toBeVisible(slow)
   if (await dialog.isVisible()) {
     await dialog.getByLabel('Mot de passe').fill(demoAccount('MANAGER').password)
     await dialog.getByRole('button', { name: 'Confirmer et reprendre' }).click()
   }
-  await expect(success.first()).toBeVisible()
+  await expect(success.first()).toBeVisible(slow)
 }
 
 /** Navigation interne de l'application (sans rechargement ni réseau) : comme un lien du menu. */

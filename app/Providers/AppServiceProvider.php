@@ -59,7 +59,7 @@ class AppServiceProvider extends ServiceProvider
         RateLimiter::for('eeo-patient-search', static fn (Request $request): Limit => Limit::perMinute((int) config('eeo.rate_limits.patient_search', 120))->by('patient-search:'.($request->user()?->getAuthIdentifier() ?? $request->ip())));
         // Lectures d'un dossier clinique : un compte ne parcourt pas tous les dossiers à la chaîne (valeur configurable).
         RateLimiter::for('eeo-consultation-read', static fn (Request $request): Limit => Limit::perMinute((int) config('eeo.rate_limits.consultation_read', 60))->by('consultation-read:'.($request->user()?->getAuthIdentifier() ?? $request->ip())));
-        RateLimiter::for('eeo-reauthenticate', static fn (Request $request): Limit => Limit::perMinute(5)->by('reauth:'.($request->user()?->getAuthIdentifier() ?? $request->ip())));
+        RateLimiter::for('eeo-reauthenticate', static fn (Request $request): Limit => Limit::perMinute((int) config('eeo.rate_limits.reauthenticate', 5))->by('reauth:'.($request->user()?->getAuthIdentifier() ?? $request->ip())));
     }
 
     /**

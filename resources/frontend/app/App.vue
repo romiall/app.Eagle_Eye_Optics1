@@ -325,7 +325,7 @@ const initials = computed(() =>
         </div>
         <div
           v-if="signedIn && session.account"
-          class="order-4 flex w-full items-center justify-between gap-2 border-t border-line pt-2 sm:w-auto sm:justify-end sm:border-t-0 sm:pt-0"
+          class="order-4 flex w-full flex-wrap items-center justify-between gap-2 border-t border-line pt-2 sm:w-auto sm:justify-end sm:border-t-0 sm:pt-0"
         >
           <RouterLink
             :to="{ name: 'aide' }"

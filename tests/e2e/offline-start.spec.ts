@@ -169,9 +169,9 @@ test.describe('démarrage sans réseau : déverrouillage public du poste (AT36, 
       await expect(main).toContainText('Données de ce poste seulement')
       const tabs = page.getByRole('navigation', { name: 'Sections du dossier patient' })
       await expect(tabs.getByRole('link')).toHaveText(['Identité'])
-      for (const closed of ['Enregistrer une arrivée', 'Créer une facture']) {
-        await expect(main.getByRole('link', { name: closed })).toHaveCount(0)
-      }
+      // L'arrivée demande le serveur : aucun lien vers un écran fermé. La facture, elle, se prépare sur le poste.
+      await expect(main.getByRole('link', { name: 'Enregistrer une arrivée' })).toHaveCount(0)
+      await expect(main.getByRole('link', { name: 'Créer une facture' })).toBeVisible()
       await capture(page, '3-fiche-sur-le-poste')
       // Modifiée sur le poste : la profession s'ajoute à la fiche (rejeu de la création puis de la modification).
       await page.getByRole('link', { name: 'Modifier' }).click()

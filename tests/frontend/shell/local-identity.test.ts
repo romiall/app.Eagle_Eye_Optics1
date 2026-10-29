@@ -64,7 +64,20 @@ const PROFILES: ProfileSummary[] = [
   },
 ]
 
-function fakeVault(options: { retryAt?: number } = {}) {
+interface FakeFact {
+  fact: {
+    commandId: string
+    commandName: string
+    entityType: string
+    entityId: string
+    payload: Record<string, unknown>
+    number: string | null
+    recordedAt: string
+  }
+  state: string
+}
+
+function fakeVault(options: { retryAt?: number; permissions?: string[]; facts?: FakeFact[] } = {}) {
   let opened: SessionInfo | null = null
   const vault = {
     status: vi.fn(async () => (opened === null ? 'locked' : 'unlocked')),
@@ -87,7 +100,7 @@ function fakeVault(options: { retryAt?: number } = {}) {
         grantId: 'G1',
         userId: CASHIER_USER,
         clinicId: CLINIC_ID,
-        permissions: ['patient.read', 'patient.create', 'invoice.read'],
+        permissions: options.permissions ?? ['patient.read', 'patient.create', 'invoice.read'],
         compartments: ['ADMINISTRATIVE'],
         validUntil: '2026-11-01T00:00:00.000Z',
       },
@@ -121,6 +134,11 @@ function fakeVault(options: { retryAt?: number } = {}) {
       readiness: vi.fn(() => ({})),
     })),
     sync: vi.fn(() => ({ syncNow: vi.fn(), summary: vi.fn(), issues: vi.fn(), pulled: vi.fn() })),
+    localFacts: vi.fn(async (compartment: string) =>
+      compartment === 'ADMINISTRATIVE' ? (options.facts ?? []) : [],
+    ),
+    localHeads: vi.fn(async () => []),
+    catalogSnapshot: vi.fn(async () => null),
     touch: vi.fn(async () => undefined),
     checkInactivity: vi.fn(async () => null),
     dispose: vi.fn(),
@@ -360,6 +378,100 @@ describe('déverrouillage public du poste', () => {
     await refreshSession()
     expect(session.status).toBe('local')
     expect(session.account?.id).toBe(CASHIER_USER)
+    unmount()
+  })
+})
+
+describe('lecture locale des fiches patient en session locale (A1)', () => {
+  const PATIENT = '01J9ZXK4M2Q8R7S6T5V4W3PA01'
+  const createdHere: FakeFact = {
+    state: 'local',
+    fact: {
+      commandId: 'cmd-1',
+      commandName: 'CreatePatient',
+      entityType: 'patient_records',
+      entityId: PATIENT,
+      number: 'EE-2026-0042',
+      recordedAt: '2026-10-28T10:00:00.000Z',
+      payload: {
+        patient_id: PATIENT,
+        last_name: 'Mbarga',
+        first_names: 'Éloïse',
+        sex: 'F',
+        birth_date: '1985-03-04',
+        phone_primary: '+237 600 00 01 02',
+        record_number: 'EE-2026-0042',
+      },
+    },
+  }
+
+  it('la fiche d’un patient du poste s’ouvre sans le serveur, seul l’onglet « Identité » est offert, et « Créer une facture » mène à la facture', async () => {
+    fakeVault({
+      permissions: ['patient.read', 'patient.update', 'invoice.create', 'invoice.read'],
+      facts: [createdHere],
+    })
+    stubServer({ me: 'unreachable' })
+    const { root, router, unmount } = await openApp('/')
+    await unlock(root, CASHIER_PROFILE, GOOD_SECRET)
+
+    await router.push(`/patients/${PATIENT}`)
+    await flushPromises()
+
+    expect(router.currentRoute.value.name).toBe('patient')
+    expect(root.querySelector('h1')?.textContent).toContain('Mbarga')
+    expect(root.textContent).toContain('EE-2026-0042')
+    expect(root.textContent).toContain('Données de ce poste seulement')
+    const tabs = [
+      ...(root.querySelectorAll('nav[aria-label="Sections du dossier patient"] a') ?? []),
+    ].map((link) => link.textContent?.trim())
+    expect(tabs).toEqual(['Identité'])
+    const links = [...root.querySelectorAll('main a')].map((link) => link.textContent?.trim())
+    expect(links).toContain('Modifier')
+    expect(links).not.toContain('Enregistrer une arrivée')
+
+    const invoiceLink = [...root.querySelectorAll('main a')].find(
+      (link) => link.textContent?.trim() === 'Créer une facture',
+    )
+    expect(invoiceLink?.getAttribute('href')).toBe(`/ventes/factures/nouvelle?patient=${PATIENT}`)
+
+    await router.push(`/ventes/factures/nouvelle?patient=${PATIENT}`)
+    await flushPromises()
+    expect(router.currentRoute.value.name).toBe('facture-nouvelle')
+    expect(root.querySelector('h1')?.textContent).toContain('Nouvelle facture')
+    expect(root.textContent).toContain('Mbarga')
+    // La liste des factures demande le serveur : le retour va à la fiche du patient.
+    const back = [...root.querySelectorAll('main a')].map((link) => link.textContent?.trim())
+    expect(back).toContain('Retour à la fiche du patient')
+    expect(back).not.toContain('Retour aux factures')
+    unmount()
+  })
+
+  it('sans le droit de créer une facture, la fiche du poste ne propose pas « Créer une facture »', async () => {
+    fakeVault({ permissions: ['patient.read', 'invoice.read'], facts: [createdHere] })
+    stubServer({ me: 'unreachable' })
+    const { root, router, unmount } = await openApp('/')
+    await unlock(root, CASHIER_PROFILE, GOOD_SECRET)
+
+    await router.push(`/patients/${PATIENT}`)
+    await flushPromises()
+
+    const links = [...root.querySelectorAll('main a')].map((link) => link.textContent?.trim())
+    expect(links).not.toContain('Créer une facture')
+    expect(links).not.toContain('Modifier')
+    unmount()
+  })
+
+  it('une fiche inconnue du poste reste « introuvable » : jamais une fiche inventée', async () => {
+    fakeVault({ permissions: ['patient.read'], facts: [createdHere] })
+    stubServer({ me: 'unreachable' })
+    const { root, router, unmount } = await openApp('/')
+    await unlock(root, CASHIER_PROFILE, GOOD_SECRET)
+
+    await router.push('/patients/01J9ZXK4M2Q8R7S6T5V4W3PA09')
+    await flushPromises()
+
+    expect(root.querySelector('h1')?.textContent).not.toContain('Mbarga')
+    expect(root.textContent).not.toContain('EE-2026-0042')
     unmount()
   })
 })

@@ -46,8 +46,8 @@ const read = usePatientRead<Patient>(() => getPatient(id.value))
 
 /**
  * Session locale (profil du coffre, serveur non joint) : seules les actions qui s'enregistrent sur le poste
- * restent offertes (modifier la fiche). Arrivée, facture, fusion et export demandent le serveur : aucun lien
- * vers un écran fermé.
+ * restent offertes (modifier la fiche, créer une facture). Arrivée, fusion et export demandent le serveur : aucun
+ * lien vers un écran fermé.
  */
 const localSession = computed(() => session.status === 'local')
 
@@ -108,7 +108,6 @@ const canExportRecord = computed(
  */
 const canInvoice = computed(
   () =>
-    !localSession.value &&
     (can('invoice.create') || can('exam_fee.collect')) &&
     enabledModules.value.includes('sales') &&
     patient.value !== null &&

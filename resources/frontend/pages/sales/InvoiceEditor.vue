@@ -20,6 +20,10 @@
  * Abandon (fichier 03 : « Une facture brouillon peut être abandonnée ») : un brouillon ENREGISTRÉ
  * s'abandonne après confirmation, avec un motif facultatif, par son créateur ou la gérante (le serveur
  * tranche). Rien d'autre ne change : pas de numéro, pas de stock, pas de pièce.
+ *
+ * Poste préparé (coffre ouvert, G1, AT37) : le brouillon, ses modifications et l'émission s'enregistrent SUR le poste
+ * (« Enregistré sur ce poste », jamais « sur le serveur ») ; la facture est alors relue dans le coffre, avec le numéro de
+ * la plage du poste, et l'abandon (qui demande le serveur) n'est pas offert pour un brouillon que le serveur ignore.
  */
 import { computed, onBeforeUnmount, ref, shallowRef } from 'vue'
 
@@ -81,13 +85,16 @@ const props = withDefaults(
     visitId?: string | null
     /** Brouillon relu sur le serveur ; null : nouveau brouillon. */
     initial?: Invoice | null
+    /** Brouillon lu sur la copie de ce poste (le serveur ne le connaît pas encore) : l'abandon n'est pas offert. */
+    local?: boolean
   }>(),
-  { visitId: null, initial: null },
+  { visitId: null, initial: null, local: false },
 )
 
 const emit = defineEmits<{
   created: [invoice: Invoice]
-  issued: [invoice: Invoice]
+  /** `onDevice` : émise sur CE poste (numéro de sa plage), le serveur ne la connaît pas encore. */
+  issued: [invoice: Invoice, onDevice: boolean]
   /** Brouillon abandonné (réponse du serveur) : l'écran parent l'affiche abandonné. */
   abandoned: [invoice: Invoice]
   /** La facture n'est plus un brouillon (émise ailleurs) : l'écran parent la relit. */
@@ -284,6 +291,22 @@ function afterServerInvoice(invoice: Invoice): void {
   savedLines.value = lines.value.map((line) => ({ ...line }))
 }
 
+/**
+ * Facture que le poste vient d'enregistrer, relue dans le coffre (`getInvoice` rend la copie du poste tant que le serveur
+ * ne l'a pas consolidée). Null si elle ne peut pas être reconstruite ici : la pièce reste dans le journal du poste.
+ */
+async function readDeviceInvoice(invoiceId: string): Promise<Invoice | null> {
+  try {
+    const result = await getInvoice(invoiceId)
+    return result.data.id === invoiceId ? result.data : null
+  } catch {
+    return null
+  }
+}
+
+const NOT_READ_ON_DEVICE =
+  'La pièce est enregistrée sur ce poste mais n’a pas pu y être relue (identité du patient ou en-tête du cabinet inconnus du poste) : elle part à la synchronisation, ne la refaites pas.'
+
 /** Lignes et facture de la dernière demande d'enregistrement : contenu exact d'une éventuelle autorisation. */
 let lastSent: { invoiceId: string; lines: Parameters<typeof draftLineRightsSubject>[2] } | null =
   null
@@ -296,6 +319,24 @@ async function afterSave(result: MutationOutcome, creating: boolean): Promise<vo
       afterServerInvoice(invoice)
       if (creating) {
         setSalesFlash('Brouillon de facture enregistré sur le serveur.')
+        emit('created', invoice)
+      }
+      return
+    }
+    case 'saved-local': {
+      // Enregistré sur ce poste (poste préparé) : rien n'est dit « sur le serveur », qui ne connaît pas encore le brouillon.
+      savedAt.value = result.at
+      const invoice = lastSent === null ? null : await readDeviceInvoice(lastSent.invoiceId)
+      if (invoice === null) {
+        generalErrors.value = [NOT_READ_ON_DEVICE]
+        await summaryBox.value?.focus()
+        return
+      }
+      afterServerInvoice(invoice)
+      if (creating) {
+        setSalesFlash(
+          'Brouillon de facture enregistré sur ce poste, en attente de synchronisation.',
+        )
         emit('created', invoice)
       }
       return
@@ -475,7 +516,25 @@ async function afterIssue(result: MutationOutcome): Promise<void> {
       setSalesFlash(
         invoice.number === null ? 'Facture émise.' : `Facture émise : numéro ${invoice.number}.`,
       )
-      emit('issued', invoice)
+      emit('issued', invoice, false)
+      return
+    }
+    case 'saved-local': {
+      // Émise sur ce poste : numéro de la plage du poste, définitif ; le serveur la reçoit à la synchronisation.
+      const base = baseline.value
+      const invoice = base === null ? null : await readDeviceInvoice(base.id)
+      if (invoice === null) {
+        generalErrors.value = [NOT_READ_ON_DEVICE]
+        await summaryBox.value?.focus()
+        return
+      }
+      savedLines.value = lines.value.map((line) => ({ ...line }))
+      setSalesFlash(
+        invoice.number === null
+          ? 'Facture émise sur ce poste, en attente de synchronisation.'
+          : `Facture émise sur ce poste : numéro ${invoice.number}, en attente de synchronisation.`,
+      )
+      emit('issued', invoice, true)
       return
     }
     case 'conflict':
@@ -811,7 +870,7 @@ const saveStatus = computed(() => {
           >Émettre la facture</AppButton
         >
         <AppButton
-          v-if="canAbandon && baseline"
+          v-if="canAbandon && baseline && !props.local"
           variant="ghost"
           :disabled="busy"
           :pending="abandoning"
@@ -850,9 +909,10 @@ const saveStatus = computed(() => {
         ligne{{ lines.length > 1 ? 's' : '' }}).
       </p>
       <p class="mt-2">
-        <strong>La facture émise ne pourra plus être modifiée.</strong> Le serveur lui attribue un
-        numéro définitif et réserve le stock des articles stockés ; une erreur se corrigera par un
-        avoir.
+        <strong>La facture émise ne pourra plus être modifiée.</strong> Elle reçoit un numéro
+        définitif (attribué par le serveur ; sur un poste préparé sans connexion, pris dans la plage
+        de ce poste et jamais renuméroté) et le stock des articles stockés est réservé ; une erreur
+        se corrigera par un avoir.
       </p>
     </ConfirmDialog>
 

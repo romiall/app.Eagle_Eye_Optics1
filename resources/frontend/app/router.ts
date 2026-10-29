@@ -330,17 +330,25 @@ export function createEeoRouter(history: RouterHistory = createWebHistory()): Ro
         path: '/ventes/factures/nouvelle',
         name: 'facture-nouvelle',
         component: InvoiceCreatePage,
+        // Brouillon et émission sur le poste : `CreateInvoiceDraft`, `UpdateDraft` et `IssueInvoice` s'enregistrent sur le poste.
         meta: {
           title: 'Nouvelle facture',
           permissions: ['invoice.create', 'exam_fee.collect'],
           module: 'sales',
+          offlineCapable: true,
         },
       },
       {
         path: `/ventes/factures/${ULID_ID}`,
         name: 'facture',
         component: InvoicePage,
-        meta: { title: 'Facture', permissions: ['invoice.read'], module: 'sales' },
+        // Facture : le serveur, et à défaut la copie de CE poste pour une facture créée ici (`getInvoice`).
+        meta: {
+          title: 'Facture',
+          permissions: ['invoice.read'],
+          module: 'sales',
+          offlineCapable: true,
+        },
       },
       {
         // Devis versionnés (L1D07) : ni créance ni encaissement ; conversion explicite en brouillon de facture.

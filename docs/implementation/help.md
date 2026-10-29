@@ -19,9 +19,10 @@ Une fiche d'écran n'est écrite qu'une fois : le panneau et la référence l'af
 | `resources/frontend/domain/help/content/pages-*.ts` | Les fiches d'écran, une constante `PAGES_…` par fichier |
 | `resources/frontend/domain/help/content/handbook-*.ts` | Les parties de la documentation globale |
 | `resources/frontend/domain/help/pages.ts`, `handbook.ts` | Assemblage et recherche d'une fiche par nom de route |
-| `resources/frontend/components/help/` | Panneau, rendu des blocs, lanceur de l'en-tête |
-| `resources/frontend/pages/help/HelpPage.vue` | Écran « Documentation » |
-| `tests/frontend/help/` | Gardes automatiques (voir plus bas) |
+| `resources/frontend/domain/help/rules.ts`, `search.ts`, `profiles.ts`, `loader.ts` | Règles d'affichage (droits, modules), recherche, profils du semis, chargement à la demande |
+| `resources/frontend/components/help/` | `HelpLauncher.vue` (bouton « Aide » et panneau), `PageHelpView.vue` (la fiche), `HelpBlocks.vue`, `HelpText.vue`, `useHelpLinks.ts` (liens fermés, interdits ou « demande le serveur ») |
+| `resources/frontend/pages/help/` | `HelpPage.vue` (écran « Aide et documentation ») et ses morceaux : `HelpHome.vue`, `HelpNavigation.vue`, `HelpNavLink.vue`, `HelpTopic.vue`, `documentation.ts` |
+| `tests/frontend/help/`, `tests/e2e/help.spec.ts` | Gardes automatiques (voir plus bas) et parcours dans un navigateur |
 
 Le contenu est chargé à la demande (import dynamique) : il n'alourdit pas le démarrage de l'application.
 
@@ -104,6 +105,9 @@ La partie « Mise en service » est réservée aux comptes qui gèrent le person
 
 Un écran modifié sans mise à jour de sa fiche est un défaut de livraison : l'aide trompe plus qu'elle n'aide quand elle est périmée.
 
-## Statut
+## Statut (2026-10-29)
 
-À renseigner en fin de chantier (couverture, preuves, limites).
+- **Couverture** : 51 fiches d'écran (toutes les routes nommées, dont `connexion` et `deverrouiller`) et 43 rubriques en 7 parties. Les écrans du travail sans Internet (`parametres-poste`, `conflits-synchronisation`, `deverrouiller`) sont en `maturity: 'validation'` : l'aide ne promet rien.
+- **Preuves** : gardes automatiques de `tests/frontend/help/` (libellés, routes, droits, liens, vocabulaire, promesses) et 18 parcours e2e (`help.spec.ts`, `manager-tools.spec.ts`, copie isolée du dépôt, 360 px compris) verts.
+- **Limites connues** : les libellés, routes et droits sont contrôlés automatiquement ; les gestes et règles décrits (qui peut quoi, ordre des étapes) ont été écrits d'après le code et les documents, sans seconde relecture. À corriger au fil de l'eau si un écran réel les contredit (la fiche de l'écran se met à jour avec l'écran).
+- **À faire plus tard** : feuille de style d'impression de la coquille (`App.vue`) pour imprimer une seule rubrique ; titre d'onglet de la route `aide` (« Aide ») aligné sur le titre de l'écran.

@@ -78,6 +78,7 @@ const TEXT_PAIRS: readonly [string, string, string][] = [
   ['warning', 'canvas', 'fraîcheur incomplète, pièces en attente sur le fond'],
   ['ink', 'warning-soft', 'message de conflit ou de connexion indisponible'],
   ['danger', 'surface', 'message d’erreur sous un champ'],
+  ['muted', 'danger-soft', 'espace réservé, icône, chevron et unité d’un champ invalide'],
   ['danger', 'danger-soft', 'titre du résumé d’erreurs'],
   ['ink', 'danger-soft', 'liens du résumé d’erreurs'],
   ['disabled-ink', 'disabled', 'bouton ou champ désactivé'],

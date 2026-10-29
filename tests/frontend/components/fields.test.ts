@@ -363,7 +363,7 @@ describe('présentation des champs (alignement, icône, état invalide)', () => 
     return Boolean(first.compareDocumentPosition(second) & Node.DOCUMENT_POSITION_FOLLOWING)
   }
 
-  it('place l’aide puis l’erreur SOUS le contrôle : les saisies d’une rangée restent alignées', () => {
+  it('place l’erreur puis l’aide SOUS le contrôle : saisies alignées, erreur contre sa saisie', () => {
     const wrapper = track(
       mount(TextField, {
         props: {
@@ -371,17 +371,21 @@ describe('présentation des champs (alignement, icône, état invalide)', () => 
           modelValue: '',
           hint: 'Tel qu’il figure sur la pièce',
           error: 'Trop long.',
+          controlId: 'nom',
         },
         attachTo: document.body,
       }),
     )
     const label = wrapper.get('label').element
     const input = wrapper.get('input').element
-    const [hint, error] = wrapper.findAll('p').map((paragraph) => paragraph.element)
+    const hint = wrapper.get('#nom-aide').element
+    const error = wrapper.get('#nom-erreur').element
 
     expect(follows(label, input)).toBe(true)
-    expect(follows(input, hint as Element)).toBe(true)
-    expect(follows(hint as Element, error as Element)).toBe(true)
+    expect(follows(input, error)).toBe(true)
+    expect(follows(error, hint)).toBe(true)
+    // L'ordre de lecture par aria-describedby reste : aide, puis erreur.
+    expect(wrapper.get('input').attributes('aria-describedby')).toBe('nom-aide nom-erreur')
   })
 
   it('garde le libellé sur la ligne de référence des boutons posés à côté du champ', () => {
@@ -409,15 +413,41 @@ describe('présentation des champs (alignement, icône, état invalide)', () => 
   })
 
   it('contrôle invalide : bordure, anneau et fond d’erreur, sans deux fonds en conflit', () => {
-    const invalid = controlClasses(true).join(' ')
-    const valid = controlClasses(false).join(' ')
+    // Jetons exacts : `border-danger` n'est pas satisfait par `hover:border-danger-strong`.
+    const invalid = controlClasses(true)
+      .flatMap((part) => part.split(/\s+/))
+      .filter(Boolean)
+    const valid = controlClasses(false)
+      .flatMap((part) => part.split(/\s+/))
+      .filter(Boolean)
 
-    expect(invalid).toContain('border-danger')
-    expect(invalid).toContain('bg-danger-soft')
-    expect(invalid).not.toContain('bg-surface')
-    expect(valid).toContain('bg-surface')
-    expect(valid).not.toContain('bg-danger-soft')
+    for (const token of ['border-danger', 'bg-danger-soft', 'ring-1', 'ring-danger']) {
+      expect(invalid, token).toContain(token)
+    }
     expect(invalid).toContain('field-control')
     expect(valid).toContain('field-control')
+    // Un seul fond par état : deux utilitaires de fond se départageraient par l'ordre du CSS généré.
+    expect(invalid.filter((token) => /^bg-/.test(token))).toEqual(['bg-danger-soft'])
+    expect(valid.filter((token) => /^bg-/.test(token))).toEqual(['bg-surface'])
+  })
+
+  it('garde le remplissage horizontal d’origine (px-3) : les cellules étroites du tableau optique', () => {
+    expect(controlClasses(false)).toEqual(
+      expect.arrayContaining([expect.stringMatching(/\bpx-3\b/)]),
+    )
+    expect(controlClasses(false).join(' ')).not.toMatch(/\bpx-3\.5\b/)
+  })
+
+  it('place l’unité du montant DANS le champ, à droite, sans pastille ni largeur en plus', () => {
+    const wrapper = track(
+      mount(MoneyField, { props: { label: 'Montant', modelValue: 5000, controlId: 'montant' } }),
+    )
+    const unit = wrapper.get('#montant-unite')
+
+    expect(unit.text()).toBe('FCFA')
+    expect(unit.classes()).toEqual(expect.arrayContaining(['absolute', 'pointer-events-none']))
+    expect(wrapper.get('input').classes()).toContain('pr-15')
+    // L'unité est un frère de la saisie, dans la même enveloppe : une seule colonne de largeur.
+    expect(unit.element.parentElement).toBe(wrapper.get('input').element.parentElement)
   })
 })

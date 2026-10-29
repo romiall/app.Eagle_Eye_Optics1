@@ -603,8 +603,8 @@ worker). Règles : `tests/frontend/shell/local-identity.test.ts`, `tests/fronten
 ### Limites déclarées
 
 1. **Lecture locale des écrans** : seuls les écrans listés ci-dessus s'ouvrent hors serveur. La fiche patient, la recherche et
-   la modification d'une fiche du poste sont faites (A1, plus bas) ; le catalogue, la lecture d'une facture et la création
-   d'une facture sans réseau relisent encore le serveur (écart 1 de G1, tranches suivantes).
+   la modification d'une fiche du poste, le choix d'un article du catalogue figé, la création, l'émission et la lecture d'une
+   facture du poste sont faits (A1, plus bas) ; la liste des factures et les autres écrans de vente relisent encore le serveur.
 2. **Identité du cabinet des PDF** : après un redémarrage sans serveur, `currentDocumentClinic` retombe sur le nom du cabinet
    retenu (les autres mentions restent « à renseigner » sur un document de test). Les pièces financières émises gardent leur
    identité figée. Les mentions complètes hors ligne se retiennent avec les écrans locaux.
@@ -667,5 +667,52 @@ création : `tests/frontend/patients/create-page.test.ts`.
    serveur serait une absence affirmée à tort).
 3. **Recherche approchée** : jumelle simplifiée de celle du serveur (mêmes règles de casse, d'accents et de chiffres), sans
    classement de pertinence ; l'ordre est alphabétique.
-4. **Facture** : « Créer une facture » reste fermé en session locale (tranches suivantes : lecture locale de la facture,
-   catalogue et règles de vente locaux, éditeur de facture sur le poste).
+4. **Facture** : levé par les tranches 2 et 3 (section suivante).
+
+## Implémentation (A1, tranches 2 et 3) — facture créée, émise et lue sur le poste — 2026-10-29
+
+Lève l'écart 1 de G1 : AT37 à la lettre (« Sans réseau : facture 80 000, acompte 30 000/reçu, solde 50 000/reçu, PDF/impression »).
+Preuve en navigateur réel : `tests/e2e/offline-invoice.spec.ts` (profil persistant, serveur RÉELLEMENT arrêté, deux fermetures
+complètes, synchronisation à la fin). Règles pures : `tests/frontend/billing/local-invoices.test.ts` et `local-catalog.test.ts` ;
+lectures : `tests/frontend/services/billing-local.test.ts` ; éditeur : `tests/frontend/billing/invoice-draft.test.ts`.
+
+### Comportement
+
+- **Catalogue figé** (`domain/billing/localCatalog.ts`, `app/services/localCatalog.ts`, `catalogSnapshot()` de la façade du coffre) :
+  le contenu remis à la préparation du poste (articles, règles fiscales, jamais de coût d'achat) est lu dans l'entité scellée
+  `catalog_snapshot`. `searchCatalog(query, page, { includeLocal: true })` (choix d'un article de facture seulement) répond avec lui quand
+  le serveur ne répond pas : articles ACTIFS, mots cherchés dans la référence et le nom (casse, accents, ponctuation et ordre
+  ignorés), 25 par page ; la liste dit « Catalogue de ce poste (serveur non consulté) ». Une règle fiscale n'est appliquée que si
+  elle est active, avec un taux ET validée par la gérante (comme `TaxRegime::applicable`) : sinon `NO_TAX_CONFIGURED` et aucune taxe
+  ventilée, jamais zéro.
+- **Factures du poste** (`domain/billing/localInvoices.ts`, `app/services/localInvoices.ts`) : rejeu des faits FINANCIERS du journal
+  local. `CreateInvoiceDraft` pose le brouillon, chaque `UpdateDraft` remplace ses lignes (version du brouillon +1), `IssueInvoice`
+  l'émet avec le numéro de la plage du poste (jamais renuméroté). La facture rendue a la forme de celle du serveur (`Invoice`) :
+  lignes figées d'après le catalogue figé (référence, catégorie, unité ; ligne libre : `OTHER` et `UNIT`), montants des MÊMES règles
+  pures que le serveur (`computeLineAmounts`), identité du patient, en-tête du cabinet et règles fiscales figés à l'émission,
+  version du grand livre 1 à l'émission (comme le compteur du journal). Les encaissements s'y ajoutent comme pour une facture du
+  serveur (`localPayments`).
+- **Priorité** (F10, AT42) : `getInvoice` rend la copie du poste tant que sa dernière commande de brouillon ou d'émission n'est ni
+  consolidée ni rejetée ; consolidée, le serveur fait foi quand il répond et la copie répond quand il ne répond pas. Une erreur du
+  serveur n'est jamais remplacée. La fraîcheur dit « Données de ce poste seulement ».
+- **Éditeur** : `saved-local` (poste préparé, coffre ouvert, serveur ou non) est géré pour `CreateInvoiceDraft`, `UpdateDraft` et
+  `IssueInvoice` : « Brouillon de facture enregistré sur ce poste, en attente de synchronisation », « Facture émise sur ce poste :
+  numéro … » (jamais « sur le serveur »), la facture est relue dans le coffre. Si elle ne peut pas y être reconstruite, la pièce reste au
+  journal et le message dit de ne pas la refaire. L'abandon d'un brouillon (serveur seulement) n'est pas offert pour une facture
+  du poste ; la fiche d'une facture du poste remplace les panneaux « remises, avoirs, corrections » (serveur) par une note.
+- **Écrans** (`offlineCapable`) : nouvelle facture et facture ; la fiche du patient propose « Créer une facture » en session locale ;
+  la recherche du patient de la nouvelle facture répond avec les fiches du poste. En session locale, « Retour aux factures » n'est
+  pas offert (la liste des factures demande le serveur).
+
+### Limites déclarées
+
+1. **Patients du serveur** : l'identité figée à l'émission vient des fiches CRÉÉES sur ce poste. Pour un patient du serveur, une facture
+   émise sur le poste n'est pas relisible hors ligne tant que l'annuaire du poste (projections du pull) n'est pas lu : la pièce reste
+   au journal et part à la synchronisation.
+2. **Articles stockés** : leur émission sur le poste exige un quota de stock du poste (AT40, G2) ; sans quota, la commande n'est pas
+   prise sur le poste. Le parcours e2e emploie des articles non stockés (examen, verres sur mesure).
+3. **En-tête du cabinet** : nom, fuseau, monnaie et « document de test » seulement (limite 2 du déverrouillage public) ; le libellé d'une
+   règle fiscale est son code (le libellé n'est pas dans le catalogue figé).
+4. **Règles de vente du compte** (plafond de remise, modes de règlement) : lues sur le serveur ; sans lui, l'écran garde ses textes
+   génériques et le serveur tranche à la synchronisation (prix ou remise au-delà des droits).
+5. **Serveur seulement** : liste des factures, abandon d'un brouillon, avoirs, remboursements, contre-écritures, remise au patient.

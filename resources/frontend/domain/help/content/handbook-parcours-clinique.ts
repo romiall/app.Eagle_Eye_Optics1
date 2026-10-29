@@ -227,7 +227,7 @@ export const TOPICS_PARCOURS_CLINIQUE: readonly HandbookTopic[] = [
       {
         kind: 'note',
         tone: 'tip',
-        text: 'L’application n’envoie ni SMS ni WhatsApp dans cette version. Pour rappeler un rendez-vous, appelez ou écrivez vous-même au patient.',
+        text: 'L’application n’envoie aucun SMS ni aucun message WhatsApp dans cette version. Pour rappeler un rendez-vous, appelez ou écrivez vous-même au patient.',
       },
     ],
     related: [

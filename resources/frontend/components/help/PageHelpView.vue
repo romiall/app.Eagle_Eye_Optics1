@@ -42,8 +42,14 @@ const props = withDefaults(
     level?: 2 | 3 | undefined
     /** La première tâche s'ouvre d'elle-même ; les autres restent fermées. */
     expandFirstTask?: boolean | undefined
+    /**
+     * État d'un écran cité dans « Ensuite » pour CE compte (voir `useHelpLinkState`) : `open` (lien),
+     * `server` (écran fermé tant que le serveur ne répond pas : texte et mention « demande le serveur »),
+     * `hidden` (module fermé ou droit absent : le lien n'est pas montré). Absent : tous les liens sont ouverts.
+     */
+    linkState?: ((route: string) => 'open' | 'hidden' | 'server') | undefined
   }>(),
-  { level: 3, expandFirstTask: true },
+  { level: 3, expandFirstTask: true, linkState: undefined },
 )
 
 const emit = defineEmits<{ navigate: [] }>()
@@ -95,6 +101,15 @@ function isLinkable(link: HelpRef): boolean {
   if (router === null) return false
   return router.hasRoute('topic' in link ? 'aide' : link.route)
 }
+
+/** Une rubrique de la documentation est toujours accessible ; un écran dépend de l'état fourni par l'hôte. */
+function stateOf(link: HelpRef): 'open' | 'hidden' | 'server' {
+  if ('topic' in link || props.linkState === undefined) return 'open'
+  return props.linkState(link.route)
+}
+
+/** Les écrans que ce compte ne peut pas ouvrir ne sont pas montrés : la fiche n'est jamais plus bavarde que l'écran. */
+const nextLinks = computed(() => props.help.next.filter((link) => stateOf(link) !== 'hidden'))
 
 /**
  * Mots d'optique du glossaire « optique » ; tout autre mot est défini dans le glossaire « gestion ».
@@ -228,7 +243,7 @@ function onLinkClick(event: MouseEvent): void {
       </section>
 
       <section
-        v-if="props.help.next.length > 0"
+        v-if="nextLinks.length > 0"
         :aria-labelledby="sectionId('ensuite')"
         class="space-y-3 py-5 first:pt-0 last:pb-0"
       >
@@ -236,9 +251,9 @@ function onLinkClick(event: MouseEvent): void {
           Ensuite
         </component>
         <ul role="list" class="space-y-1">
-          <li v-for="(link, index) in props.help.next" :key="`${index}-${link.label}`">
+          <li v-for="(link, index) in nextLinks" :key="`${index}-${link.label}`">
             <RouterLink
-              v-if="isLinkable(link)"
+              v-if="stateOf(link) === 'open' && isLinkable(link)"
               :to="targetOf(link)"
               class="text-link inline-flex min-h-11 max-w-full items-center gap-2 font-medium"
               @click="onLinkClick"
@@ -249,6 +264,7 @@ function onLinkClick(event: MouseEvent): void {
             <span v-else class="inline-flex min-h-11 max-w-full items-center gap-2 font-medium">
               <AppIcon name="arrow-right" :size="16" class="text-gold" />
               <span class="min-w-0 break-words">{{ link.label }}</span>
+              <span v-if="stateOf(link) === 'server'" class="text-muted">(demande le serveur)</span>
             </span>
             <p v-if="link.why" class="-mt-1 pl-6 break-words text-muted">
               <HelpText :text="link.why" />

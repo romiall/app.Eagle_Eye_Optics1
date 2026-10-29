@@ -171,7 +171,7 @@ export const TOPICS_MISE_EN_SERVICE: readonly HandbookTopic[] = [
           ['« Stock »', 'Quand la gérante est prête à saisir le stock d’ouverture'],
           ['« Statistiques »', 'Avec les écrans précédents'],
           ['« Agenda »', 'Après une courte formation'],
-          ['Le travail sans Internet', 'Pas encore disponible : il reste fermé'],
+          ['Les postes hors ligne (pas encore disponibles)', 'Ce module reste fermé'],
         ],
       },
       {

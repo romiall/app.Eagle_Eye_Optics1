@@ -378,7 +378,7 @@ export const TOPICS_NOTIONS_FINANCE: readonly HandbookTopic[] = [
           [
             'Physique',
             'Ce qui est réellement en place dans le cabinet.',
-            'Il baisse à la remise, à une casse ou à un ajustement. Il remonte avec un retour remis en stock.',
+            'Il baisse à la remise ou à une casse, remonte avec un retour remis en stock, et varie avec un ajustement après comptage (en plus ou en moins).',
           ],
           [
             'Réservé',

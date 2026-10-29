@@ -46,7 +46,7 @@ export const TOPICS_DEMARRER: readonly HandbookTopic[] = [
         title: 'Ce que cette version ne fait pas encore',
         items: [
           'Le travail sans connexion Internet : la fonction existe, mais elle est encore en cours de validation et n’est pas ouverte au cabinet.',
-          'L’envoi automatique de SMS ou de messages WhatsApp : l’application liste les patients à rappeler, c’est vous qui les appelez ou leur écrivez.',
+          'L’application n’envoie aucun SMS ni message WhatsApp : elle liste les patients à rappeler, c’est vous qui les appelez ou leur écrivez.',
           'L’atelier (suivi des commandes à l’atelier), les campagnes de communication et les exports comptables.',
           'La réception de marchandises fournisseurs, l’inventaire et les alertes de péremption du stock.',
         ],

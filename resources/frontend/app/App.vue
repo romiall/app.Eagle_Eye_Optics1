@@ -23,6 +23,7 @@ import {
 
 import logoUrl from '@/assets/brand/eeo-logo.svg'
 import NetworkStatus from '@/components/feedback/NetworkStatus.vue'
+import HelpLauncher from '@/components/help/HelpLauncher.vue'
 import ReauthDialog from '@/components/session/ReauthDialog.vue'
 import SyncStatus from '@/components/SyncStatus.vue'
 import AppButton from '@/components/ui/AppButton.vue'
@@ -327,11 +328,7 @@ const initials = computed(() =>
           v-if="signedIn && session.account"
           class="order-4 flex w-full flex-wrap items-center justify-between gap-2 border-t border-line pt-2 sm:w-auto sm:justify-end sm:border-t-0 sm:pt-0"
         >
-          <RouterLink
-            :to="{ name: 'aide' }"
-            class="inline-flex min-h-11 items-center gap-1.5 rounded-lg px-2 text-sm font-medium text-primary underline underline-offset-4 hover:bg-primary-soft"
-            ><AppIcon name="help" :size="18" />Aide</RouterLink
-          >
+          <HelpLauncher />
           <AppButton v-if="vaultOpen" variant="ghost" @click="lockStation"
             ><AppIcon name="lock" :size="18" />Verrouiller le poste</AppButton
           >

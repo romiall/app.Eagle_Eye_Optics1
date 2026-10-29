@@ -215,6 +215,40 @@ pas. Détail : `docs/implementation/vault.md`, « Implémentation (A1) » ; preu
   `IssueInvoice`), catalogue figé et règles de vente locaux, éditeur de facture et émission sur le poste, puis un parcours e2e de
   facture créée serveur arrêté.
 
+## Écarts de G1 : (a1) lecture locale des écrans, tranches 2 et 3 : facture sur le poste (2026-10-29)
+
+Chantier de la branche `claude/facture-hors-ligne-seule` (base : les formulaires fusionnés, `claude/formulaires-presentation`, plus la
+facture sur le poste ; extraite de `claude/facture-hors-ligne`, branche partagée avec l'aide intégrée en cours, pour être vérifiée
+par la CI sans elle). Lève l'écart 1 de G1 : AT37 à la lettre, une facture
+créée, émise et encaissée SANS réseau. Détail : `docs/implementation/vault.md`, « Implémentation (A1, tranches 2 et 3) » ; preuve :
+`docs/evidence/G1.md`.
+
+- **Code** : catalogue figé lu dans le coffre (`domain/billing/localCatalog.ts`) ; rejeu des faits financiers en factures
+  (`domain/billing/localInvoices.ts`, `app/services/localInvoices.ts`) ; `getInvoice` et `searchCatalog` (option `includeLocal`)
+  répondent depuis le poste ; l'éditeur de facture gère `saved-local` (brouillon, modification, émission : numéro de la plage du poste) ;
+  écrans `offlineCapable` : nouvelle facture et facture ; « Créer une facture » depuis la fiche en session locale ; la fiche d'une
+  facture du poste remplace les panneaux du serveur par une note.
+- **Tests** : `tests/frontend/billing/local-invoices.test.ts`, `local-catalog.test.ts`, `tests/frontend/services/billing-local.test.ts`,
+  quatre cas ajoutés à `invoice-draft.test.ts` ; `tests/e2e/offline-invoice.spec.ts` : patient et facture de 80 000 créés puis émis
+  serveur arrêté, acompte de 30 000 et solde de 50 000, deux reçus, PDF de la facture et d'un reçu, aucune requête hors de l'origine,
+  fermeture complète (tout est retrouvé), puis synchronisation sans renumérotation.
+- **Découverte annexe** : l'audit Composer de la CI échouait sur toutes les branches depuis l'avis symfony/mime du 2026-10-28 (CVE-2026-45070) ;
+  le correctif (mise à jour de `symfony/mime`, 7.4.22) vient de la session « formulaires » et a été reporté sur `claude/lecture-locale-ecrans`.
+- **CI de la branche de vérification** `claude/facture-hors-ligne-seule` (formulaires fusionnés et facture sur le poste, sans l'aide
+  intégrée en cours) : [run 40958516757](https://github.com/romiall/app.Eagle_Eye_Optics2/actions/runs/40958516757) sur `fb09518` :
+  **vert** (PHP, Frontend, E2E : 74 parcours dont `offline-invoice.spec.ts`, AT37 à la lettre). La branche partagée
+  `claude/facture-hors-ligne` (même contenu plus l'aide intégrée en cours de rédaction par l'autre session) reste rouge tant que
+  cette aide n'est pas terminée (tests de contenu) ; elle doit recevoir les correctifs de la branche de vérification par fusion.
+- **Incidents de parcours (causes et correctifs)** : (1) un serveur Vite de développement lancé dans le dossier (`public/hot`) faisait
+  charger la page depuis lui, sans service worker : garde dans `AppServiceProvider` (environnements `e2e` et `demo`) ; (2) un serveur de
+  test resté actif sur le port dédié après un délai dépassé faussait l'essai suivant : arrêt manuel, et l'attente du service worker est
+  bornée à 60 s ; (3) la limite de 5 confirmations de mot de passe par minute et par compte (429) faisait échouer `offline-start` quand il
+  suivait `offline-invoice`, puis `offline-sync` en cascade (poste non libéré) : `EEO_RATE_REAUTHENTICATE` (5 par défaut, relevée pour les
+  e2e), très probablement aussi la cause de l'instabilité de `legacy-balances.spec.ts` (boîte de confirmation restée affichée) ; (4) deux
+  assertions de parcours à corriger (note du catalogue en double dans l'annonce vocale, lien « Créer une facture » désormais offert).
+- **Démonstration locale** : `node tools/dev/demo-local.mjs` (base dédiée `eeo_demo_test`, comptes fictifs à mots de passe aléatoires dans
+  `storage/framework/testing/demo-accounts.json`, jamais touchés par les e2e).
+
 ## Réponses de la cliente (2026-10-28)
 
 - **Horaires d'ouverture** (à saisir par la gérante dans les paramètres de l'agenda) : lundi, mardi, mercredi 8 h 30 à

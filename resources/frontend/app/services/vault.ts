@@ -157,6 +157,21 @@ async function localFactsOf(
   }
 }
 
+/**
+ * Catalogue et règles fiscales FIGÉS de ce poste (remis à sa préparation, jamais de coût d'achat) : valeur brute à lire
+ * avec `readLocalCatalog`, ou null si le module `offline` est fermé, le coffre fermé, le compartiment administratif fermé
+ * pour la session, ou le catalogue jamais remis. Lecture seule.
+ */
+export async function localCatalogSnapshot(): Promise<unknown> {
+  if (!offlineModuleOpen() || instance === null || state.value.session === null) return null
+  try {
+    return await instance.catalogSnapshot()
+  } catch (error) {
+    if (isVaultError(error)) return null
+    throw error
+  }
+}
+
 export async function refreshLocalCommands(): Promise<void> {
   const current = localCommandsOrNull()
   if (current !== null) await current.refresh()

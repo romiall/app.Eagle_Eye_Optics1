@@ -12,6 +12,7 @@ import {
   numberValue,
   prepareThisDevice,
   signIn,
+  unlockFromPublicScreen,
 } from './support/device'
 import { startLaravelServer } from './support/laravel-server'
 import { START_OFFLINE_PORT } from './support/ports'
@@ -67,15 +68,6 @@ async function openFromSearch(page: Page, name: string): Promise<void> {
   await main.getByRole('link', { name: new RegExp(name) }).click()
   await expect(page).toHaveURL(/\/patients\/[0-9A-HJKMNP-TV-Z]{26}$/)
   await expect(page.getByRole('heading', { level: 1 })).toContainText(name)
-}
-
-/** Déverrouille depuis l'écran PUBLIC (un seul profil sur ce poste : présélectionné). */
-async function unlockFromPublicScreen(page: Page, secret: string): Promise<void> {
-  await expect(
-    page.getByRole('heading', { level: 1, name: 'Déverrouiller ce poste' }),
-  ).toBeVisible()
-  await page.getByLabel('Secret local').fill(secret)
-  await page.getByRole('button', { name: 'Déverrouiller', exact: true }).click()
 }
 
 test.describe('démarrage sans réseau : déverrouillage public du poste (AT36, D14, D27)', () => {

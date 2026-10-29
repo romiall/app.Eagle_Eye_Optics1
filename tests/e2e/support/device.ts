@@ -71,6 +71,15 @@ export async function unlockVault(page: Page, secret: string): Promise<void> {
   await expect(vaultOpened(page)).toBeVisible()
 }
 
+/** Déverrouille depuis l'écran PUBLIC de déverrouillage (un seul profil sur ce poste : présélectionné). */
+export async function unlockFromPublicScreen(page: Page, secret: string): Promise<void> {
+  await expect(
+    page.getByRole('heading', { level: 1, name: 'Déverrouiller ce poste' }),
+  ).toBeVisible()
+  await page.getByLabel('Secret local').fill(secret)
+  await page.getByRole('button', { name: 'Déverrouiller', exact: true }).click()
+}
+
 /** Numéro d'une pièce (`TEST-REC-2026-000051` → 51). */
 export function numberValue(rendered: string): number {
   return Number((/-(\d+)$/.exec(rendered) ?? ['', '0'])[1])

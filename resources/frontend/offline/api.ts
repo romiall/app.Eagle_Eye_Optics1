@@ -202,6 +202,11 @@ export interface OfflineVault {
   sync(options: { transport: SyncTransport }): DeviceSync
   localFacts(compartment: Compartment): Promise<LocalFactRecord[]>
   localHeads(headType: string): Promise<LocalHeadRecord[]>
+  /**
+   * Catalogue et règles fiscales FIGÉS remis à la préparation du poste (entité scellée `catalog_snapshot`, compartiment
+   * administratif) : sa valeur brute, ou null s'il n'a jamais été remis. À lire avec `readLocalCatalog`.
+   */
+  catalogSnapshot(): Promise<unknown>
   onBeforeLock(hook: () => Promise<void> | void): () => void
   touch(): Promise<void>
   checkInactivity(): Promise<string | null>
@@ -327,6 +332,8 @@ export function openOfflineVault(options: OpenOfflineVaultOptions = {}): Offline
     },
     localFacts: (compartment) => localFacts(self(), compartment),
     localHeads: (headType) => localHeads(self(), headType),
+    catalogSnapshot: async () =>
+      (await self().getEntity<unknown>('catalog_snapshot', 'current'))?.value ?? null,
     onBeforeLock: (hook) => self().onBeforeLock(hook),
     touch: () => self().touch(),
     checkInactivity: () => self().checkInactivity(),

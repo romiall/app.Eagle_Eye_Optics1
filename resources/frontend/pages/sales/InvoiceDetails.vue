@@ -6,6 +6,10 @@
  * et des reçus générés sur ce poste. Rien n'y est modifiable : une erreur se corrige par une pièce liée
  * (contre-écriture, avoir, remboursement : `CorrectionsPanel`). Jamais « payé », « soldé » ni « acquitté » :
  * un reste nul se lit avec ses reçus. Remise au patient et retours physiques (I01, I02) : `DeliveriesPanel`.
+ *
+ * Facture lue sur la copie de CE poste (`local`, G1) : créée et émise sans réseau, le serveur ne la connaît pas encore.
+ * Les encaissements se font sur le poste ; remises au patient, avoirs et corrections demandent le serveur et ne sont
+ * pas offerts (aucun panneau qui échouerait), l'écran le dit.
  */
 import { computed, onMounted, ref, shallowRef, watch } from 'vue'
 
@@ -41,7 +45,9 @@ import { formatMoney, paymentMethodLabel, quantityLabel, rateLabel, unitLabel } 
 import PaymentForm from './PaymentForm.vue'
 import ReceiptPanel from './ReceiptPanel.vue'
 
-const props = defineProps<{ invoice: Invoice }>()
+const props = withDefaults(defineProps<{ invoice: Invoice; local?: boolean }>(), {
+  local: false,
+})
 
 const emit = defineEmits<{ reload: [] }>()
 
@@ -388,17 +394,23 @@ async function previewInvoice(): Promise<void> {
       <AppButton v-else variant="primary" @click="newPayment">Nouvel encaissement</AppButton>
     </template>
 
-    <DeliveriesPanel
-      :key="`remises-${props.invoice.ledger_version ?? 0}`"
-      :invoice="props.invoice"
-    />
+    <StateMessage v-if="props.local" state="offline" title="Facture de ce poste">
+      Cette facture est enregistrée sur ce poste, en attente de synchronisation : la remise au
+      patient, les avoirs et les corrections se feront après l’envoi au serveur.
+    </StateMessage>
+    <template v-else>
+      <DeliveriesPanel
+        :key="`remises-${props.invoice.ledger_version ?? 0}`"
+        :invoice="props.invoice"
+      />
 
-    <CorrectionsPanel
-      :invoice="props.invoice"
-      :cash-session-id="cashSessionId"
-      :cash-session-read="cashSessionRead"
-      @reload="emit('reload')"
-    />
+      <CorrectionsPanel
+        :invoice="props.invoice"
+        :cash-session-id="cashSessionId"
+        :cash-session-read="cashSessionRead"
+        @reload="emit('reload')"
+      />
+    </template>
 
     <section aria-labelledby="titre-pdf-facture" class="space-y-3">
       <h2 id="titre-pdf-facture" class="text-lg font-semibold">Document de la facture</h2>

@@ -226,7 +226,8 @@ async function retry(): Promise<void> {
           (<RouterLink to="/patients" class="text-link py-2.5 font-semibold"
             >chercher dans la liste</RouterLink
           >)</template
-        >. Le numéro de dossier est attribué par le serveur à l’enregistrement.
+        >. Le numéro de dossier est attribué à l’enregistrement : par le serveur, ou, sur un poste
+        préparé sans connexion, pris dans la plage de ce poste.
       </p>
     </PageHeader>
 

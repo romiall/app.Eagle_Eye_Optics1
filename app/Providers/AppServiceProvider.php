@@ -34,6 +34,7 @@ class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
         $this->useRootRelativeAssetPaths();
+        $this->ignoreViteHotFileInEndToEndTests();
         $this->authorizePermissionCodes();
         $this->limitAuthenticationAttempts();
         $this->disablePersonalAccessTokens();
@@ -111,6 +112,20 @@ class AppServiceProvider extends ServiceProvider
         Vite::createAssetPathsUsing(
             static fn (string $path, ?bool $secure = null): string => '/'.ltrim($path, '/'),
         );
+    }
+
+    /**
+     * Parcours e2e et démonstration locale (APP_ENV=e2e ou demo) : la coquille vient TOUJOURS de `public/build`, jamais
+     * d'un serveur Vite (le développement, lui, garde le fichier `hot`). Un
+     * `npm run dev` lancé dans le même dossier (aperçu d'une autre session) écrit `public/hot` et ferait charger la
+     * page depuis ce serveur : ni service worker, ni précache, donc plus aucun test de démarrage hors ligne ne
+     * peut aboutir. Le fichier désigné n'existe jamais ; les autres environnements gardent le comportement de Laravel.
+     */
+    private function ignoreViteHotFileInEndToEndTests(): void
+    {
+        if ($this->app->environment(['e2e', 'demo'])) {
+            Vite::useHotFile(storage_path('framework/testing/vite-hot-ignored'));
+        }
     }
 
     /**

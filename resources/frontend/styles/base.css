@@ -308,6 +308,29 @@ body {
   }
 
   /*
+   * Libellé d'écran cité dans l'aide (`HelpText`, « Enregistrer le patient ») : la puce distingue au
+   * premier coup d'œil le NOM d'un bouton, d'un champ ou d'un message du reste de la phrase, pour que le
+   * personnel retrouve à l'écran exactement ce que le texte nomme. Fond doré léger, bordure fine et
+   * graisse 600 ; les guillemets restent dans le texte, donc le sens ne repose jamais sur la teinte.
+   * Texte `primary` sur `primary-soft` (13,18:1, association déjà vérifiée par palette.test.ts). La puce
+   * reste en ligne et passe à la ligne si le libellé est long (aucun défilement horizontal à 360 px,
+   * même dans une cellule qui interdirait la coupure) ; `box-decoration-break: clone` redessine fond,
+   * bordure et marges intérieures sur chaque fragment au lieu de laisser une puce coupée en deux.
+   */
+  .help-label {
+    padding: 0.0625rem 0.375rem;
+    border: 1px solid var(--color-line);
+    border-radius: 0.375rem;
+    background-color: var(--color-primary-soft);
+    color: var(--color-primary);
+    font-weight: 600;
+    white-space: normal;
+    overflow-wrap: anywhere;
+    -webkit-box-decoration-break: clone;
+    box-decoration-break: clone;
+  }
+
+  /*
    * Tableau de données : cadre de carte qui défile seul en largeur si besoin (jamais la page),
    * en-tête sur fond doré léger, lignes séparées par un filet, survol crème, nombres et montants
    * alignés à droite en chiffres tabulaires (`th`/`td` de classe `num`).

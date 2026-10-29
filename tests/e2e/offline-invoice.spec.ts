@@ -154,7 +154,7 @@ test.describe('AT37 à la lettre : facture, acompte, solde et PDF SANS réseau (
       await expect(page).toHaveURL(/\/ventes\/factures\/nouvelle\?patient=[0-9A-HJKMNP-TV-Z]{26}$/)
       const picker = page.getByRole('combobox', { name: 'Ajouter un article du catalogue' })
       await picker.fill('DEMO-VERRES')
-      await expect(page.getByText(/Catalogue de ce poste/)).toBeVisible()
+      await expect(page.getByText(/Catalogue de ce poste/).first()).toBeVisible()
       await page.getByRole('option', { name: /Verres fictifs/ }).click()
       await picker.fill('DEMO-EXAMEN')
       await page.getByRole('option', { name: /Examen de vue \(fictif\)/ }).click()

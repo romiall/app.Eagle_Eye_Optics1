@@ -127,11 +127,15 @@ function stepper(page: Page) {
 test.describe('suppression d’un examen resté brouillon (C01) sur la vraie application', () => {
   test('un brouillon se supprime et sa visite revient dans la file ; un examen en cours ou terminé ne se supprime pas', async ({
     page,
-  }) => {
+  }, testInfo) => {
     test.setTimeout(420_000)
-    const lastName = 'Suppression Brouillon'
+    // La base est partagée avec les autres parcours et, sur la CI, avec la première tentative : chaque essai a son
+    // patient et son numéro (deux noms sans ressemblance, la détection de doublon refuserait le second).
+    const attempt = Math.min(testInfo.retry, 1)
+    const lastName =
+      ['Suppression Brouillon', 'Retrait Provisoire'][attempt] ?? 'Suppression Brouillon'
     await signIn(page, 'RECEPTION')
-    await createPatient(page, lastName, '+237 600 00 13 01')
+    await createPatient(page, lastName, `+237 600 00 13 0${attempt + 1}`)
     await registerArrivalFromRecord(page, lastName)
 
     await switchTo(page, 'CLINICIAN')
@@ -208,7 +212,10 @@ test.describe('suppression d’un examen resté brouillon (C01) sur la vraie app
         name: new RegExp(`^Modifier l’examen de .*${lastName}`, 'i'),
       }),
     ).toBeVisible()
-    await expect(page.getByRole('button', { name: /^Supprimer l’examen de/ })).toHaveCount(0)
+    // Cette carte seulement : la liste du jour contient aussi les brouillons des autres parcours.
+    await expect(
+      inProgressCard.getByRole('button', { name: /^Supprimer l’examen de/ }),
+    ).toHaveCount(0)
 
     // Terminer l'examen : lecture seule, aucune suppression, refus du serveur.
     await page.goto(`/consultations/${secondId}`)
@@ -230,8 +237,12 @@ test.describe('suppression d’un examen resté brouillon (C01) sur la vraie app
 
     // Dans la liste, « Modifier » d'un examen terminé ouvre la correction (nouvelle révision), jamais « Supprimer ».
     await page.goto('/consultations')
-    await expect(page.getByRole('button', { name: /^Supprimer l’examen de/ })).toHaveCount(0)
-    await page
+    const completedCard = page.locator('li.card').filter({ hasText: new RegExp(lastName, 'i') })
+    await expect(completedCard.getByText('Terminé', { exact: true })).toBeVisible()
+    await expect(completedCard.getByRole('button', { name: /^Supprimer l’examen de/ })).toHaveCount(
+      0,
+    )
+    await completedCard
       .getByRole('link', { name: new RegExp(`^Modifier l’examen de .*${lastName}`, 'i') })
       .click()
     await expect(page).toHaveURL(new RegExp(`/consultations/${secondId}\\?corriger=1$`))

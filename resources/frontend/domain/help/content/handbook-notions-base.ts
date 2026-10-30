@@ -256,10 +256,10 @@ export const TOPICS_NOTIONS_BASE: readonly HandbookTopic[] = [
         title: 'Règles de saisie',
         items: [
           'OD (œil droit) vient toujours avant OG (œil gauche). OU (les deux yeux) n’existe que pour l’acuité.',
-          'Chaque groupe d’acuité (« Acuité de loin », « Acuité de près », « Acuité après correction ») a son « échelle utilisée ». Notez la valeur telle qu’elle est lue, sans conversion : deux échelles dans un même groupe sont signalées, leurs valeurs ne sont pas comparables.',
+          'Chaque groupe d’acuité (« Acuité de loin », « Acuité de près », « Acuité après correction ») a son « échelle utilisée ». Notez la valeur telle qu’elle est lue, sans conversion : deux échelles dans un même groupe sont signalées, leurs valeurs ne sont pas comparables. Des boutons proposent les valeurs usuelles ; si le cabinet n’a qu’une échelle, elle est retenue d’office.',
           'Tant que le cabinet n’a pas validé son échelle, l’écran peut afficher « Échelles de démonstration » : elles ne sont pas validées cliniquement.',
           'La réfraction garde trois mesures distinctes : « Autoréfracteur », « Réfraction objective » et « Réfraction subjective ». Virgule ou point, deux décimales au plus ; une troisième est refusée, jamais arrondie. Un cylindre positif n’est jamais transposé.',
-          'Au « Centrage », l’écart pupillaire total, OD et OG se saisissent séparément : aucun n’est calculé à votre place. Si leur somme diffère du total, une « Justification de l’écart » est obligatoire.',
+          'L’« Écart pupillaire total (mm) » du ticket de l’autoréfracteur se saisit sous son tableau, à la « Réfraction », et apparaît au « Centrage ». Au « Centrage », l’écart pupillaire total, OD et OG se saisissent séparément : aucun n’est calculé à votre place. Si leur somme diffère du total, une « Justification de l’écart » est obligatoire.',
           'L’application ne pose aucun diagnostic : les amétropies, la conclusion et l’orientation sont vos choix. Une orientation vers un ophtalmologiste exige un « Niveau d’urgence ».',
         ],
       },

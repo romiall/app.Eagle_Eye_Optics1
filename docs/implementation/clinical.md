@@ -281,3 +281,42 @@ prescripteur et date d'origine obligatoires, aucune consultation) mais aucun éc
   réfraction ; pas d'impression proposée (l'original papier existe).
 - Tests écrits : `tests/Feature/Clinical/PatientPrescriptionsTest.php`, `tests/e2e/external-prescription.spec.ts`.
 
+## Nouvelle consultation et saisie rapide (2026-10-30)
+
+Demande de la cliente après la démonstration : aucun bouton pour lancer un examen hors de la file du jour, et un écran
+d'examen éloigné de son carnet et du ticket de l'autoréfracteur. Aucune commande, aucun contrat ni aucune table ne
+change : tout passe par `StartConsultation`, `RegisterVisit` et `SaveClinicalStep` existants.
+
+- **Entrées** : action d'accueil `new-consultation` (« Nouvelle consultation », `clinical.write`, module `consultations`,
+  adresse `/consultations?nouvelle=1`), raccourci `start-exam` (« Démarrer un examen », groupe « Examens ») et bouton du
+  même nom en tête de la liste des examens. L'adresse `?nouvelle=1` ouvre la boîte et se retire à sa fermeture.
+- **Boîte** (`StartConsultationDialog.vue`, montée à la demande ; contenu `StartConsultationPanel.vue`) : « Dans la
+  file du jour » liste les visites d'examen ou de suivi en attente (arrivé, en attente du paiement, prêt) avec
+  `ExamAction` (mêmes règles et mêmes refus que la file : `EXAM_PAYMENT_REQUIRED` est dit tel quel). « Un autre
+  patient » cherche par nom, téléphone ou dossier (`patient.read`) : une visite d'examen déjà ouverte aujourd'hui est
+  reprise telle quelle ; sinon, avec `visit.register`, « Enregistrer l'arrivée et démarrer l'examen » envoie
+  `RegisterVisit` (motif `EXAM`) puis `StartConsultation` (`StartExamButton autostart`) : deux commandes, deux clés,
+  jamais un succès supposé ; si le démarrage échoue l'arrivée reste enregistrée et le bouton propose de réessayer.
+  File du jour illisible ou tronquée, fiche archivée ou fusionnée : aucune arrivée n'est enregistrée.
+- **Écart pupillaire du ticket** : saisi sous le tableau « Autoréfracteur » (étape « Réfraction »), c'est le champ
+  `pdTotal` du centrage (même identifiant de contrôle, un seul champ). `useConsultationEditor.run` valide d'abord le
+  centrage, envoie la réfraction puis le centrage (deux `SaveClinicalStep`, version rebasée entre les deux) quand SEUL
+  `pdTotal` a changé (`pdOnlyDirty`) ; toute autre saisie du centrage reste à enregistrer depuis son étape.
+  « Corriger l'examen » l'inclut comme n'importe quelle rubrique modifiée.
+- **Acuité** : `QuickChoices` propose sous chaque tableau les valeurs usuelles de l'échelle du groupe (échelles de
+  démonstration seulement, plus « CLD » et « VLMB » du carnet) ; un bouton remplit la dernière case touchée, sinon la
+  première case vide (sans correction OD, OG, puis avec correction), et la valeur prend l'échelle du groupe. Le serveur
+  exige toujours `scale_id` : quand le cabinet n'a qu'UNE échelle active elle s'applique d'office et son choix n'est
+  plus proposé ; avec plusieurs, le choix reste explicite (aucune échelle devinée).
+- **Motif** : boutons de symptômes courants qui complètent le texte libre (`symptoms`), sans doublon ni écrasement.
+- **Examen terminé** : « Créer une facture » (patient et visite passés à `facture-nouvelle`) pour qui a
+  `invoice.create` ou `exam_fee.collect`, module `sales` ouvert. Un reçu naît de l'encaissement d'une facture : il n'y a
+  pas de « reçu direct » depuis l'examen.
+- **Écarts avec la demande** : la profession du patient n'est pas dans l'identité rendue avec la consultation
+  (`ConsultationPatient` : contrat serveur à étendre si la cliente la veut dans l'en-tête) ; antécédents et « Porte
+  actuellement des lunettes » avaient déjà leurs cases (étapes 1 et 2) ; les sept étapes sont conservées ; la
+  prescription optique reste l'écran propre qui suit la fin de l'examen.
+- **Tests** : `tests/frontend/consultations/start-consultation.test.ts`, ajouts de `consultation-measures.test.ts` et
+  `consultation-page.test.ts`, `tests/frontend/shell/{navigation,home-shortcuts}.test.ts`,
+  `tests/e2e/consultation-nouvelle.spec.ts` (vraie application) et `shell.spec.ts`.
+

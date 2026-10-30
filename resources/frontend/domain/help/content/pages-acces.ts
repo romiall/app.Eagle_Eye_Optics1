@@ -208,6 +208,12 @@ export const PAGES_ACCES: readonly PageHelp[] = [
         anyPermission: ['patient.create'],
       },
       {
+        label: 'Nouvelle consultation',
+        effect:
+          'Ouvre l’écran « Consultations » avec la boîte pour démarrer un examen : patients de la file du jour, ou recherche d’un autre patient.',
+        anyPermission: ['clinical.write'],
+      },
+      {
         label: 'Rechercher',
         effect:
           'Ouvre l’écran « Patients » pour retrouver un patient par son nom, son téléphone ou son numéro de dossier.',
@@ -271,10 +277,10 @@ export const PAGES_ACCES: readonly PageHelp[] = [
         id: 'ouvrir-son-travail',
         title: 'Ouvrir son travail depuis l’écran d’accueil',
         steps: [
-          'Sous « Actions », cliquez sur la carte de votre tâche, par exemple « Nouveau patient » ou « Rechercher ». Seules les cartes ouvertes à votre compte apparaissent.',
+          'Sous « Actions », cliquez sur la carte de votre tâche, par exemple « Nouveau patient », « Nouvelle consultation » ou « Rechercher ». Seules les cartes ouvertes à votre compte apparaissent.',
           'Plus bas, les raccourcis sont rangés par activité : « Accueil des patients », « Examens », « Caisse et ventes » et « Administration ».',
           'Sous « Accueil des patients » : « Patients à rappeler » et « Enregistrer une arrivée ».',
-          'Sous « Examens » : « Mes examens en cours » et « Examens du jour ».',
+          'Sous « Examens » : « Démarrer un examen », « Mes examens en cours » et « Examens du jour ».',
           'Sous « Caisse et ventes » : « Caisse », « Nouvelle facture » et « Factures ».',
           'Sous « Administration » : « Personnel », « Cabinet et documents » et « Catalogue ».',
           'Une activité sans raccourci pour votre compte n’est pas affichée : avec les droits par défaut, la caissière ne voit ni « Examens » ni « Administration ».',
@@ -296,7 +302,7 @@ export const PAGES_ACCES: readonly PageHelp[] = [
     ],
     rules: [
       'Une carte, un raccourci ou une entrée du menu n’apparaît que si votre compte a le droit d’ouvrir l’écran et si son module est ouvert dans l’application.',
-      'Avec les droits par défaut : le profil accueil voit « Nouveau patient » ; la caissière, « Caisse » et « Nouvelle facture » ; le professionnel, « Mes examens en cours ».',
+      'Avec les droits par défaut : le profil accueil voit « Nouveau patient » ; la caissière, « Caisse » et « Nouvelle facture » ; le professionnel, « Nouvelle consultation » et « Mes examens en cours ».',
       'Les chiffres du bandeau viennent du serveur, pour le jour du cabinet. Une tuile sans valeur affiche un tiret et sa raison écrite : jamais un zéro inventé, jamais une ancienne valeur.',
       'Une file du jour plus longue que la lecture donne des minimums, signalés par « Au moins ce nombre : file lue en partie ».',
       'Quand la session a expiré ou que le serveur ne répond pas, l’écran d’accueil n’affiche que le message : cartes, raccourcis et chiffres reviennent avec la session.',

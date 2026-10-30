@@ -14,6 +14,12 @@ export const PAGES_CONSULTATIONS: readonly PageHelp[] = [
       'Retrouvez ici les examens de vue du cabinet, du plus récent au plus ancien : par défaut ceux d’aujourd’hui. Ouvrez un examen pour le poursuivre ou le relire. La liste ne montre aucune valeur médicale.',
     actions: [
       {
+        label: 'Nouvelle consultation',
+        effect:
+          'Ouvre la boîte de démarrage d’un examen : patients de la file du jour, ou recherche d’un autre patient.',
+        anyPermission: ['clinical.write'],
+      },
+      {
         label: 'Jour',
         effect:
           'Choisit le jour des examens affichés, aujourd’hui au départ. Vide, la liste couvre tous les jours.',
@@ -70,21 +76,24 @@ export const PAGES_CONSULTATIONS: readonly PageHelp[] = [
         result: 'Les étapes déjà enregistrées sont retrouvées ; il reste à remplir les autres.',
       },
       {
-        id: 'voir-les-revisions',
-        title: 'Voir les révisions d’un examen terminé',
+        id: 'demarrer-une-consultation',
+        title: 'Démarrer une nouvelle consultation',
+        anyPermission: ['clinical.write'],
         steps: [
-          'Dans « État », choisissez « Terminé ».',
-          'Sur la carte, la mention « Terminé le » donne la date et, entre parenthèses, la révision en vigueur.',
-          'Cliquez sur « Révisions » en bas de la carte.',
+          'Cliquez sur « Nouvelle consultation », ici ou sur l’accueil : une boîte s’ouvre.',
+          'Si le patient attend dans « Dans la file du jour », cliquez sur « Démarrer l’examen » sur sa ligne.',
+          'Sinon, dans « Un autre patient », saisissez son nom, son téléphone ou son numéro de dossier (2 caractères au moins), puis choisissez-le.',
+          'S’il n’est pas dans la file, cliquez sur « Enregistrer l’arrivée et démarrer l’examen » : l’arrivée est enregistrée avec le motif « Examen de vue », puis l’examen démarre.',
+          'Patient sans fiche : cliquez sur « Nouveau patient », ou demandez à l’accueil de créer sa fiche, puis revenez ici.',
         ],
-        result: 'L’écran « Révisions de la consultation » s’ouvre : voir son aide.',
+        result: 'L’écran « Consultation » s’ouvre sur le nouvel examen, à la première étape.',
       },
     ],
     rules: [
       'Sans filtre choisi, la liste montre les examens d’aujourd’hui, du plus récent au plus ancien, 50 par page.',
       'La liste ne montre aucune valeur médicale : seulement le patient, le dossier, la date, l’état et le professionnel.',
       'Ouvrir un examen est consigné au nom du compte qui le lit : chaque lecture d’un dossier médical laisse une trace.',
-      'Un examen se démarre depuis la file du jour, jamais depuis cette liste.',
+      'Un examen se démarre avec « Nouvelle consultation » ou depuis la file du jour ; cliquer sur une carte de cette liste ne démarre jamais un examen.',
       'Une liste que le serveur n’a pas pu fournir n’est jamais présentée comme vide : l’écran dit que le serveur n’a pas répondu.',
       'Seuls les comptes qui peuvent lire les dossiers médicaux, comme la gérante et le professionnel, voient cet écran.',
     ],
@@ -104,7 +113,7 @@ export const PAGES_CONSULTATIONS: readonly PageHelp[] = [
       },
     ],
     tips: [
-      'Depuis l’accueil, « Mes examens en cours » et « Examens du jour » ouvrent cette liste avec les filtres déjà posés.',
+      'Depuis l’accueil, « Nouvelle consultation » (sous « Actions ») ouvre cette liste avec la boîte de démarrage déjà ouverte ; « Mes examens en cours » et « Examens du jour » l’ouvrent avec les filtres posés.',
       'Le menu « Consultations » ouvre aussi cette liste, sur les examens d’aujourd’hui.',
       'Toute la carte est cliquable pour ouvrir l’examen ; le lien « Révisions » est le seul autre lien d’une carte.',
     ],
@@ -203,11 +212,11 @@ export const PAGES_CONSULTATIONS: readonly PageHelp[] = [
         anyPermission: ['clinical.write'],
         steps: [
           'Enregistrez chaque étape avec « Suivant » (à la dernière, « Enregistrer ») : « Enregistré sur le serveur » s’affiche quand le serveur a répondu.',
-          'Étape 1, « Motif et lunettes » : cochez les motifs, décrivez les « Plaintes et symptômes », puis répondez à « Porte actuellement des lunettes ».',
+          'Étape 1, « Motif et lunettes » : cochez les motifs, décrivez les « Plaintes et symptômes » (les boutons de symptômes courants les complètent), puis répondez à « Porte actuellement des lunettes ».',
           'Étape 2, « Antécédents » : dans chaque groupe, cochez les valeurs ou « Aucun connu », qui exclut les autres. Un groupe laissé vide reste « Non renseigné ».',
-          'Étape 3, « Acuité visuelle » : pour l’acuité de loin, de près et après correction, choisissez l’échelle utilisée, puis saisissez les valeurs lues, telles quelles.',
-          'Étape 4, « Réfraction » : dans chacun des trois tableaux, saisissez la sphère, le cylindre et l’axe de chaque œil ; l’addition n’existe qu’en subjective.',
-          'Étape 5, « Centrage » : saisissez l’écart pupillaire en millimètres, en total et/ou pour chaque œil. Rien n’est calculé à votre place.',
+          'Étape 3, « Acuité visuelle » : choisissez l’échelle utilisée (d’office si le cabinet n’en a qu’une), puis saisissez les valeurs lues ou touchez une valeur usuelle, pour chaque groupe d’acuité.',
+          'Étape 4, « Réfraction » : saisissez la sphère, le cylindre et l’axe de chaque œil dans les trois tableaux ; sous l’autoréfracteur, reportez aussi l’« Écart pupillaire total (mm) » du ticket.',
+          'Étape 5, « Centrage » : l’écart total déjà saisi à l’étape 4 apparaît ; ajoutez au besoin l’écart de chaque œil. Rien n’est calculé à votre place.',
           'Étape 6, « Médicaments » : cliquez sur « Ajouter un médicament », puis remplissez « Nom du médicament » et « Forme » ; les autres champs sont facultatifs.',
           'Étape 7, « Conclusion et orientation » : rédigez la conclusion et répondez à « Orientation vers un ophtalmologiste » ; si « Oui », le niveau d’urgence est obligatoire.',
         ],
@@ -250,7 +259,7 @@ export const PAGES_CONSULTATIONS: readonly PageHelp[] = [
       'Une étape n’est enregistrée qu’après la réponse du serveur : « Enregistré sur le serveur » s’affiche. Dans la liste, une coche marque une rubrique renseignée, « non enregistrée » une saisie en attente.',
       'Une case vide reste « Non renseigné » ou « non mesuré », jamais « Aucun connu » ni zéro. « 0 » et « 0,00 » sont de vraies valeurs.',
       'L’acuité se saisit telle que lue, dans l’échelle choisie pour chaque groupe (loin, près, après correction). Aucune conversion n’est faite : deux échelles différentes ne se comparent pas.',
-      'L’autoréfracteur, la réfraction objective et la réfraction subjective restent trois mesures séparées. Virgule ou point acceptés, deux décimales au plus, jamais arrondies ; l’axe va de 0 à 180.',
+      'Trois mesures séparées : autoréfracteur, objective, subjective. Deux décimales au plus, jamais arrondies ; l’axe va de 0 à 180. L’écart pupillaire du ticket s’enregistre avec la réfraction, mais appartient au « Centrage ».',
       'Cocher « Autre » ouvre un champ à préciser, obligatoire. Les questions liées à un « Oui » (ancienne correction, niveau d’urgence, motifs) ne sont enregistrées que si la réponse est « Oui ».',
       'Terminer fige la révision 1 : l’examen passe en lecture seule. Une correction crée une nouvelle révision avec son motif ; les révisions précédentes ne changent jamais.',
     ],
@@ -278,7 +287,7 @@ export const PAGES_CONSULTATIONS: readonly PageHelp[] = [
       'Les médicaments se saisissent librement : aucune base de médicaments, aucune posologie complétée. « Monter » et « Descendre » règlent l’ordre de l’ordonnance. Prescrire ne crée ni vente ni mouvement de stock.',
       'Sous l’examen, le bloc « Contrôle recommandé » permet de « Programmer un contrôle ». Il n’apparaît que si l’agenda est ouvert pour votre compte.',
       'Quitter l’écran avec une saisie en attente demande confirmation : « Des saisies ne sont pas encore enregistrées. Quitter cet écran sans les enregistrer ? » L’examen s’ouvre toujours à l’étape 1.',
-      'Sans droit de saisie, l’écran affiche « Lecture seule » : seule la navigation entre les étapes fonctionne.',
+      'Une fois l’examen terminé, « Créer une facture » (pour les comptes qui facturent) ouvre la facture avec le patient et la visite déjà choisis. Sans droit de saisie, l’écran affiche « Lecture seule » : seule la navigation entre les étapes fonctionne.',
     ],
     problems: [
       {

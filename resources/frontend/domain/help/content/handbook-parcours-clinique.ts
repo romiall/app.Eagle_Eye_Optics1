@@ -264,7 +264,7 @@ export const TOPICS_PARCOURS_CLINIQUE: readonly HandbookTopic[] = [
     id: 'parcours-examen',
     title: 'Examen de vue : démarrer, saisir, terminer, corriger, comparer',
     summary:
-      'Démarrer l’examen depuis la file du jour, remplir les sept étapes, le terminer, le corriger par une révision et comparer des révisions.',
+      'Démarrer l’examen (« Nouvelle consultation » ou file du jour), remplir les sept étapes, le terminer, le corriger par une révision et comparer des révisions.',
     module: 'consultations',
     anyPermission: ['clinical.read'],
     audience: ['CLINICIAN', 'MANAGER'],
@@ -275,7 +275,10 @@ export const TOPICS_PARCOURS_CLINIQUE: readonly HandbookTopic[] = [
         kind: 'flow',
         title: 'Du démarrage à la correction',
         stages: [
-          { label: '1. Démarrer', text: '« Démarrer l’examen », dans « Aujourd’hui ».' },
+          {
+            label: '1. Démarrer',
+            text: '« Nouvelle consultation », ou « Démarrer l’examen » dans « Aujourd’hui ».',
+          },
           { label: '2. Saisir', text: 'Sept étapes ; « Suivant » enregistre.' },
           {
             label: '3. Terminer',
@@ -289,7 +292,9 @@ export const TOPICS_PARCOURS_CLINIQUE: readonly HandbookTopic[] = [
         kind: 'steps',
         title: 'Démarrer l’examen',
         items: [
-          'Ouvrez « Aujourd’hui ». Sur la carte du patient arrivé, cliquez sur « Démarrer l’examen ».',
+          'Cliquez sur « Nouvelle consultation » (accueil ou écran « Consultations ») : choisissez le patient qui attend dans « Dans la file du jour », ou cherchez-le dans « Un autre patient », puis cliquez sur « Démarrer l’examen ».',
+          'Un patient qui n’est pas encore dans la file : « Enregistrer l’arrivée et démarrer l’examen » enregistre son arrivée (motif « Examen de vue »), puis démarre l’examen.',
+          'Autre chemin : ouvrez « Aujourd’hui » et, sur la carte du patient arrivé, cliquez sur « Démarrer l’examen ».',
           'Vérifiez le nom du patient dans l’en-tête de la consultation avant de saisir.',
           'Examen commencé : « Reprendre l’examen ». Examen terminé : « Consulter l’examen ». L’écran « Consultations » liste tous les examens.',
         ],
@@ -309,15 +314,15 @@ export const TOPICS_PARCOURS_CLINIQUE: readonly HandbookTopic[] = [
           ],
           [
             '« Acuité visuelle »',
-            'Valeur lue pour OD (œil droit), OG (œil gauche) et OU (les deux yeux), avec l’échelle de chaque groupe. Case vide : « non mesuré ».',
+            'Valeur lue pour OD (œil droit), OG (œil gauche) et OU (les deux yeux), avec l’échelle de chaque groupe ; des boutons proposent les valeurs usuelles. Case vide : « non mesuré ».',
           ],
           [
             '« Réfraction »',
-            '« Autoréfracteur », « Réfraction objective » et « Réfraction subjective » : trois mesures séparées (sphère, cylindre, axe).',
+            '« Autoréfracteur », « Réfraction objective » et « Réfraction subjective » : trois mesures séparées (sphère, cylindre, axe). L’« Écart pupillaire total (mm) » du ticket se saisit sous l’autoréfracteur.',
           ],
           [
             '« Centrage »',
-            'Écarts pupillaires en millimètres. La somme OD + OG est proposée, vous la reportez vous-même.',
+            'Écarts pupillaires en millimètres : l’écart total saisi à la réfraction y apparaît déjà. La somme OD + OG est proposée, vous la reportez vous-même.',
           ],
           [
             '« Médicaments »',

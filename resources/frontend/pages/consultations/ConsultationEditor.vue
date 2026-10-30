@@ -18,7 +18,11 @@
  *   version actuelle et signale les valeurs modifiées des deux côtés.
  * - Terminer l'examen : confirmation, récapitulatif des rubriques non renseignées (jamais transformées en
  *   « Aucun »), justification d'absence si le motif/les plaintes ou la conclusion manquent.
- * - Examen terminé : lecture seule, avec l'historique des révisions et la correction motivée (`clinical.amend`).
+ * - Écart pupillaire du ticket de l'autoréfracteur : saisi dans le bloc de l'autoréfracteur (étape « Réfraction »),
+ *   c'est l'écart total de l'étape « Centrage » ; « Enregistrer » ou « Suivant » sur la réfraction l'enregistre
+ *   avec elle (deux commandes l'une après l'autre), sans repasser par le centrage.
+ * - Examen terminé : lecture seule, avec l'historique des révisions, la correction motivée (`clinical.amend`) et
+ *   « Créer une facture » (patient et visite déjà renseignés) pour qui peut facturer.
  * - Sans le droit d'écriture (clinical.write) : lecture seule, aucun bouton d'enregistrement.
  * - Hors ligne : « Consultation indisponible », jamais une consultation vide.
  * Une instance par consultation (l'écran la recrée quand l'adresse change).
@@ -26,6 +30,7 @@
 import { computed, nextTick, ref, watch } from 'vue'
 
 import { clinicTimeZone, formatInstantFr } from '@/app/clinicTime'
+import { canOnScreen, moduleOpenOnScreen } from '@/app/session'
 import { useUnsavedChangesGuard } from '@/app/unsavedChanges'
 import WorkStatusChip from '@/components/clinical/WorkStatusChip.vue'
 import ConfirmDialog from '@/components/feedback/ConfirmDialog.vue'
@@ -131,6 +136,24 @@ const referral = computed(() => {
   return conclusion.referral_urgency === null ? null : urgencyLabel(conclusion.referral_urgency)
 })
 const referred = computed(() => baseline.value?.steps.CONCLUSION.referral === true)
+
+/**
+ * « Créer une facture » (B02) depuis l'examen terminé : droit invoice.create ou exam_fee.collect, module
+ * « sales » ouvert. Le patient et la visite passent par leurs identifiants opaques (rien n'est ressaisi).
+ */
+const canInvoice = computed(
+  () =>
+    (canOnScreen('invoice.create') || canOnScreen('exam_fee.collect')) &&
+    moduleOpenOnScreen('sales'),
+)
+const invoiceLink = computed(() =>
+  baseline.value === null
+    ? null
+    : {
+        name: 'facture-nouvelle',
+        query: { patient: baseline.value.patient_id, visite: baseline.value.visit_id },
+      },
+)
 
 const saving = computed(() => state.value === 'saving')
 const savingStep = computed(
@@ -270,6 +293,13 @@ function stepBadge(step: DeliveredStep): string {
               :to="{ name: 'consultation-prescriptions', params: { id: props.consultationId } }"
               variant="secondary"
               >Prescription optique</LinkButton
+            >
+            <LinkButton
+              v-if="canInvoice && invoiceLink"
+              :to="invoiceLink"
+              variant="secondary"
+              :accessible-name="`Créer une facture pour ${baseline.patient.last_name}`"
+              >Créer une facture</LinkButton
             >
             <AppButton v-if="canAmend" variant="primary" :disabled="busy" @click="editor.startAmend"
               >Corriger l’examen</AppButton
@@ -440,8 +470,10 @@ function stepBadge(step: DeliveredStep): string {
               <RefractionStep
                 v-else-if="current === 'REFRACTION'"
                 v-model="drafts.REFRACTION"
+                :pd="drafts.CENTERING.pdTotal"
                 :errors="errorMap"
                 :disabled="readOnly || busy"
+                @update:pd="drafts.CENTERING = { ...drafts.CENTERING, pdTotal: $event }"
               />
               <CenteringStep
                 v-else-if="current === 'CENTERING'"

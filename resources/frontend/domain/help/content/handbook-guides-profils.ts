@@ -161,7 +161,7 @@ export const TOPICS_GUIDES_PROFILS: readonly HandbookTopic[] = [
         title: 'Ce que vous voyez',
         items: [
           'Menu, selon les écrans ouverts au cabinet : « Accueil », « Aujourd’hui », « Patients », « Consultations » et « Agenda ». Ni « Ventes et caisse », ni « Paramètres ».',
-          'Sur la page d’accueil, sous « Examens » : « Mes examens en cours » et « Examens du jour ». Dans un dossier patient, vous lisez les onglets « Identité », « Activité » et « Prescriptions » sans pouvoir modifier la fiche.',
+          'Sur la page d’accueil, sous « Examens » : « Démarrer un examen », « Mes examens en cours » et « Examens du jour ». Dans un dossier patient, vous lisez les onglets « Identité », « Activité » et « Prescriptions » sans pouvoir modifier la fiche.',
         ],
       },
       {
@@ -190,7 +190,7 @@ export const TOPICS_GUIDES_PROFILS: readonly HandbookTopic[] = [
         kind: 'points',
         title: 'Vos gestes les plus fréquents',
         items: [
-          'Démarrer : « Démarrer l’examen » dans « Aujourd’hui ». Ensuite « Reprendre l’examen » (examen commencé) ou « Consulter l’examen » (examen terminé).',
+          'Démarrer : « Nouvelle consultation » (accueil) ou « Démarrer l’examen » dans « Aujourd’hui ». Ensuite « Reprendre l’examen » (examen commencé) ou « Consulter l’examen » (examen terminé).',
           'Saisir et terminer : « Suivant » enregistre l’étape et avance, « Enregistrer » la garde sans avancer. À la fin : « Terminer l’examen ».',
           'Prescrire : « Prescription optique », « Nouvelle prescription », « Enregistrer le brouillon », puis « Valider la prescription ». Une version validée ne change plus : « Créer une nouvelle version ».',
           'Imprimer : « Aperçu de la prescription » (version validée), « Aperçu de l’ordonnance de médicaments » ou « Aperçu de la lettre d’orientation », puis « Imprimer ».',

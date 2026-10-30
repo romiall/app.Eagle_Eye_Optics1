@@ -210,7 +210,7 @@ export const TOPICS_DEMARRER: readonly HandbookTopic[] = [
         title: 'La page d’accueil',
         items: [
           'Elle dit « Bonjour » et votre nom, puis la date du cabinet. Le bandeau « Aujourd’hui » donne les chiffres du jour : « Patients en attente », « En consultation », « Visites terminées », « Rendez-vous », « Encaissé net ». « Actualiser les chiffres » les relit.',
-          'Sous « Actions », les gestes courants : « Nouveau patient », « Rechercher », « Rendez-vous », « Consultations du jour », « Statistiques », « Paramètres ». Plus bas, des raccourcis par activité : « Accueil des patients », « Examens », « Caisse et ventes », « Administration ».',
+          'Sous « Actions », les gestes courants : « Nouveau patient », « Nouvelle consultation », « Rechercher », « Rendez-vous », « Consultations du jour », « Statistiques », « Paramètres ». Plus bas, des raccourcis par activité : « Accueil des patients », « Examens », « Caisse et ventes », « Administration ».',
           'Tout dépend de votre profil. Une tuile, un bouton ou une entrée de menu absent signifie que votre compte n’y a pas droit, ou que l’exploitant ne l’a pas encore ouvert.',
         ],
       },

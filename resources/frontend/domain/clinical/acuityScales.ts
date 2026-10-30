@@ -19,6 +19,21 @@ export function acuitySuggestions(scaleCode: string | null): readonly string[] {
   return scaleCode === null ? [] : (DEMO_ACUITY_SUGGESTIONS[scaleCode] ?? [])
 }
 
+/**
+ * Mentions du carnet du cabinet pour une acuité qui ne se chiffre pas en dixièmes (compte les doigts :
+ * « CLD » ; « VLMB »). Comme les suggestions : une aide à la saisie, jamais une valeur appliquée seule.
+ */
+export const DEMO_SPECIAL_VALUES: Readonly<Record<string, readonly string[]>> = {
+  DEMO_DIXIEMES: ['CLD', 'VLMB'],
+}
+
+/** Valeurs à proposer en boutons : les valeurs usuelles de l'échelle, puis ses mentions du carnet. */
+export function acuityQuickValues(scaleCode: string | null): readonly string[] {
+  return scaleCode === null
+    ? []
+    : [...acuitySuggestions(scaleCode), ...(DEMO_SPECIAL_VALUES[scaleCode] ?? [])]
+}
+
 /** Vrai pour une échelle de démonstration (code `DEMO_…`) : l'écran le dit, ce n'est pas une échelle validée. */
 export function isDemoScale(scaleCode: string): boolean {
   return scaleCode.startsWith('DEMO_')

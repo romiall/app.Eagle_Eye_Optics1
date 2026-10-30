@@ -64,7 +64,7 @@ export const TOPICS_GLOSSAIRE_DEPANNAGE: readonly HandbookTopic[] = [
           {
             term: 'Écart pupillaire',
             definition:
-              'Distance entre les deux pupilles, en millimètres. À l’étape « Centrage », le total, l’OD et l’OG se saisissent séparément ; une « Justification de l’écart » est obligatoire si la somme OD et OG diffère du total.',
+              'Distance entre les deux pupilles, en millimètres. À l’étape « Centrage », le total, l’OD et l’OG se saisissent séparément ; une « Justification de l’écart » est obligatoire si la somme OD et OG diffère du total. L’écart total du ticket de l’autoréfracteur se saisit déjà à l’étape « Réfraction ».',
           },
           {
             term: 'Monture',

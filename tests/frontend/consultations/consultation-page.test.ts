@@ -479,13 +479,48 @@ describe('droits et module', () => {
     unmount()
   })
 
+  it('un examen terminé propose « Créer une facture » (patient et visite déjà renseignés) à qui peut facturer', async () => {
+    const done = consultation({
+      status: 'COMPLETED',
+      current_revision: 1,
+      completed_at: '2026-10-22T09:50:00.000Z',
+    })
+    stubConsultationApi({ permissions: [...CLINICIAN, 'invoice.create'], consultation: done })
+    const { root, unmount } = await openConsultation()
+
+    const invoice = [...root.querySelectorAll('a')].find(
+      (link) => link.textContent?.trim() === 'Créer une facture',
+    )
+    expect(invoice?.getAttribute('href')).toBe(
+      `/ventes/factures/nouvelle?patient=${ID_A}&visite=${done.visit_id}`,
+    )
+    unmount()
+  })
+
+  it('sans droit de facturer (professionnel seul), aucun lien vers la caisse n’est proposé', async () => {
+    stubConsultationApi({
+      permissions: CLINICIAN,
+      consultation: consultation({
+        status: 'COMPLETED',
+        current_revision: 1,
+        completed_at: '2026-10-22T09:50:00.000Z',
+      }),
+    })
+    const { root, unmount } = await openConsultation()
+
+    expect(textOf(root)).toContain('Examen terminé')
+    expect(textOf(root)).not.toContain('Créer une facture')
+    unmount()
+  })
+
   it('le professionnel (CLINICIAN) voit les boutons Précédent, Enregistrer et Suivant', async () => {
     stubConsultationApi({ permissions: CLINICIAN })
     const { root, unmount } = await openConsultation()
 
-    const labels = [...root.querySelectorAll('main form button')].map((button) =>
-      button.textContent?.replace(/\s+/g, ' ').trim(),
-    )
+    // Hors boutons d'aide à la saisie (symptômes courants), que les groupes `role="group"` portent.
+    const labels = [...root.querySelectorAll('main form button')]
+      .filter((button) => button.closest('[role="group"]') === null)
+      .map((button) => button.textContent?.replace(/\s+/g, ' ').trim())
     expect(labels).toEqual(['Précédent', 'Enregistrer', 'Suivant'])
     expect((buttonByName(root, 'Précédent') as HTMLButtonElement).disabled).toBe(true)
     expect(textOf(root)).toContain(

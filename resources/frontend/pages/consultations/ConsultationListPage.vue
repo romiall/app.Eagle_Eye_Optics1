@@ -8,14 +8,18 @@
  * toute la carte ouvre la consultation (lien étendu), l'état est une puce écrite en toutes lettres, deux
  * colonnes sur grand écran.
  *
+ * « Nouvelle consultation » (`clinical.write`) ouvre la boîte de démarrage d'un examen : patients de la file
+ * du jour, ou recherche d'un autre patient (`StartConsultationDialog`).
+ *
  * Préréglages par l'adresse (raccourcis de l'accueil) : `?jour=tous`, `?etat=IN_PROGRESS`, `?mes=1` — des
- * filtres, jamais une donnée de santé.
+ * filtres, jamais une donnée de santé — et `?nouvelle=1`, qui ouvre la boîte « Nouvelle consultation ».
  */
 import { computed, ref, watch } from 'vue'
-import { RouterLink, useRoute } from 'vue-router'
+import { RouterLink, useRoute, useRouter } from 'vue-router'
 
 import { clinicTimeZone, clinicToday, formatInstantFr } from '@/app/clinicTime'
 import { listConsultations } from '@/app/services/consultationList'
+import { canOnScreen } from '@/app/session'
 import WorkStatusChip from '@/components/clinical/WorkStatusChip.vue'
 import FreshnessNote from '@/components/feedback/FreshnessNote.vue'
 import ReadNotice from '@/components/feedback/ReadNotice.vue'
@@ -36,15 +40,31 @@ import type {
 import { patientDisplayName } from '@/domain/patients/identity'
 import { useServerRead } from '@/pages/today/useServerRead'
 
+import StartConsultationDialog from './StartConsultationDialog.vue'
+
 const STATUSES: readonly ConsultationsStatus[] = ['DRAFT', 'IN_PROGRESS', 'COMPLETED']
 
 const route = useRoute()
+const router = useRouter()
 const timeZone = clinicTimeZone()
 const today = clinicToday().toString()
 
 function queryText(name: string): string | null {
   const value = route.query[name]
   return typeof value === 'string' ? value : null
+}
+
+/** Démarrer un examen demande le droit d'écriture clinique ; la boîte est montée seulement quand elle est ouverte. */
+const canStart = computed(() => canOnScreen('clinical.write'))
+const startOpen = ref(canOnScreen('clinical.write') && queryText('nouvelle') === '1')
+
+function closeStart(): void {
+  startOpen.value = false
+  // L'adresse ne doit plus rouvrir la boîte (actualisation, retour en arrière) : le reste de l'adresse est gardé.
+  if (route.query['nouvelle'] === undefined) return
+  const rest = { ...route.query }
+  delete rest['nouvelle']
+  void router.replace({ name: route.name ?? 'consultations', query: rest })
 }
 
 const presetStatus = queryText('etat')
@@ -106,7 +126,15 @@ const emptyTitle = computed(() =>
       title="Consultations"
       icon="consultations"
       subtitle="Examens du cabinet, du plus récent au plus ancien. Ouvrez un examen pour le lire ou le poursuivre."
-    />
+    >
+      <template v-if="canStart" #actions>
+        <AppButton variant="primary" @click="startOpen = true"
+          ><AppIcon name="stethoscope" :size="18" />Nouvelle consultation</AppButton
+        >
+      </template>
+    </PageHeader>
+
+    <StartConsultationDialog v-if="startOpen" @close="closeStart" />
 
     <form
       role="search"
@@ -150,7 +178,8 @@ const emptyTitle = computed(() =>
     />
 
     <StateMessage v-else-if="read.state.value === 'empty'" state="empty" :title="emptyTitle">
-      Le serveur n’a aucun examen pour ces critères. Un examen se démarre depuis la file du jour.
+      Le serveur n’a aucun examen pour ces critères. Un examen se démarre avec « Nouvelle
+      consultation » ou depuis la file du jour.
     </StateMessage>
 
     <template v-else-if="result !== null">

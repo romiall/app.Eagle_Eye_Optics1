@@ -50,7 +50,7 @@ technique : `clinical.md`, « Modifier et supprimer un examen » ; droits : `acc
 ## Chantier « CRUD des écrans », tranches 2 et 3a : inventaire, brouillons et annulation (2026-10-30)
 
 Branche `claude/crud-ecrans-suite`, empilée sur `claude/crud-ecrans`. La tranche 1 a été mise en ligne le 2026-10-30 à la demande
-du demandeur (release `eeo-20261030T1628Z-6d1b2bb`, CI verte run 41079465699). Tranches 2 et 3a : CI verte, run 41106310621 sur `2f195fb` ; PHPUnit complet 2 491 OK ; pas encore en ligne.
+du demandeur (release `eeo-20261030T1628Z-6d1b2bb`, CI verte run 41079465699). Tranches 2 et 3a : CI verte (run 41106310621 sur `2f195fb`, puis run 41110470924 sur `bbd83c4`) ; PHPUnit complet 2 491 OK ; mises en ligne le 2026-10-30 à la demande du demandeur (release `eeo-20261030T1916Z-bbd83c4`, aucune migration, sauvegarde préalable de la base ; contrôles anonymes : `/up`, les trois routes nouvelles répondent 401 sans session, assets de `/build/` identiques).
 
 - **Tranche 2** : `docs/implementation/crud.md`, matrice entité par entité (créer, lire, modifier, supprimer ou équivalent),
   ce qui existe côté serveur et écran, règle de suppression retenue et justifiée par les sources, décisions proposées pour la

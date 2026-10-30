@@ -629,7 +629,7 @@ worker). Règles : `tests/frontend/shell/local-identity.test.ts`, `tests/fronten
 
 Première tranche de l'écart 1 de G1 (lecture locale des écrans patient et facture) : la fiche d'un patient, la recherche et la
 modification d'une fiche répondent depuis le coffre quand le serveur ne répond pas. Preuve en navigateur réel :
-`tests/e2e/offline-start.spec.ts` (serveur RÉELLEMENT arrêté, trois fermetures complètes). Règles pures :
+`tests/e2e/offline-start.spec.ts` (serveur RÉELLEMENT arrêté, deux fermetures complètes). Règles pures :
 `tests/frontend/patients/local-patients.test.ts` ; lectures : `tests/frontend/services/patients-local.test.ts` ; écran de
 création : `tests/frontend/patients/create-page.test.ts`.
 
@@ -689,7 +689,8 @@ lectures : `tests/frontend/services/billing-local.test.ts` ; éditeur : `tests/f
   local. `CreateInvoiceDraft` pose le brouillon, chaque `UpdateDraft` remplace ses lignes (version du brouillon +1), `IssueInvoice`
   l'émet avec le numéro de la plage du poste (jamais renuméroté). La facture rendue a la forme de celle du serveur (`Invoice`) :
   lignes figées d'après le catalogue figé (référence, catégorie, unité ; ligne libre : `OTHER` et `UNIT`), montants des MÊMES règles
-  pures que le serveur (`computeLineAmounts`), identité du patient, en-tête du cabinet et règles fiscales figés à l'émission,
+  pures que le serveur (`computeLineAmounts`), identité du patient, en-tête du cabinet et règles fiscales relus à chaque affichage d'après l'état COURANT du poste (le serveur
+  fige les siens à la synchronisation : avant, rien n'est figé côté poste),
   version du grand livre 1 à l'émission (comme le compteur du journal). Les encaissements s'y ajoutent comme pour une facture du
   serveur (`localPayments`).
 - **Priorité** (F10, AT42) : `getInvoice` rend la copie du poste tant que sa dernière commande de brouillon ou d'émission n'est ni
@@ -716,3 +717,16 @@ lectures : `tests/frontend/services/billing-local.test.ts` ; éditeur : `tests/f
 4. **Règles de vente du compte** (plafond de remise, modes de règlement) : lues sur le serveur ; sans lui, l'écran garde ses textes
    génériques et le serveur tranche à la synchronisation (prix ou remise au-delà des droits).
 5. **Serveur seulement** : liste des factures, abandon d'un brouillon, avoirs, remboursements, contre-écritures, remise au patient.
+6. **Catalogue figé, serveur vivant** : le serveur revalide les brouillons contre son catalogue ACTUEL (prix, taxes, article actif), pas
+   contre celui du poste ; un prix, une taxe ou un article modifié depuis la préparation peut faire refuser la pièce à la
+   synchronisation (elle passe alors en revue). Aucun plafond de remise ni autorité de prix n'est contrôlé sur le poste.
+7. **Espèces hors ligne** : la session de caisse se lit sur le serveur seulement ; sans lui, seuls les modes qui n'en demandent pas
+   (mobile money, virement…) s'encaissent.
+8. **Pas de liste des factures du poste** : une facture se rouvre depuis son adresse ou l'historique du navigateur ; une liste « Factures
+   de ce poste » sur la fiche du patient est à faire.
+9. **État de synchronisation** : seul celui des encaissements s'affiche ; une facture rejetée ou en conflit n'a pas encore d'écran dédié
+   (elle redevient « introuvable » sur le serveur).
+10. **Facture déjà consolidée lue en repli** (serveur injoignable après l'ACK) : ses encaissements acquittés sont repris du journal ; la
+    mention « en attente de synchronisation » peut rester affichée à tort.
+11. **Patient du serveur, émission** : la facture émise sur le poste n'est pas relisible ici ; l'éditeur le dit, se verrouille (aucune
+    seconde émission) et la pièce part à la synchronisation.

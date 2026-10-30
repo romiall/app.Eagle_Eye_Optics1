@@ -4,11 +4,13 @@ import type {
   InvoiceLine,
   InvoicePatientSnapshot,
   InvoiceTaxSnapshot,
+  PaymentsMethod,
 } from '../contracts/generated'
 import { Quantity, Rate } from '../values/decimal'
 import { computeLineAmounts, invoiceTotal, type LineAmounts } from './lineAmounts'
 import { applicableTaxRule, type LocalCatalog, type LocalCatalogItem } from './localCatalog'
 import type { LocalFactLike, LocalPaymentState } from './localPayments'
+import { isPaymentMethod } from './payment'
 
 /**
  * Factures créées sur CE poste préparé (G1 ; fichier 19, AT37), reconstruites par REJEU des faits financiers du journal
@@ -51,6 +53,18 @@ export function isUnconsolidatedInvoice(state: LocalPaymentState): boolean {
   return state !== 'acknowledged' && state !== 'rejected'
 }
 
+/** Encaissement du poste que le serveur a déjà consolidé (ACK) : il fait partie de la facture, plus de son « en attente ». */
+interface ConsolidatedPayment {
+  id: string
+  amount: number
+  method: PaymentsMethod
+  reference: string | null
+  effectiveAt: string
+  recordedAt: string
+  receiptId: string | null
+  receiptNumber: string | null
+}
+
 interface Working {
   patientId: string
   visitId: string | null
@@ -58,6 +72,7 @@ interface Working {
   draftVersion: number
   lines: unknown[]
   issued: { number: string | null; issuedAt: string } | null
+  payments: ConsolidatedPayment[]
   state: LocalPaymentState
 }
 
@@ -154,6 +169,19 @@ function taxSnapshotOf(
   return { regime: rules.length === 0 ? 'NO_TAX_CONFIGURED' : 'VALIDATED_RULES', rules }
 }
 
+/** Situation de règlement d'une facture du poste d'après ses seuls encaissements consolidés (même vocabulaire que le serveur). */
+function settlementOf(
+  issued: boolean,
+  total: number,
+  paid: number,
+): Invoice['balance']['settlement'] {
+  if (!issued) return 'NOT_ISSUED'
+  const due = total - paid
+  if (due < 0) return 'IN_CREDIT'
+  if (due === 0) return 'SETTLED'
+  return paid > 0 ? 'PARTIALLY_PAID' : 'UNPAID'
+}
+
 function invoiceOf(
   id: string,
   working: Working,
@@ -179,6 +207,8 @@ function invoiceOf(
   if (issued !== null && (patient === null || clinic === null || issued.number === null))
     return null
 
+  const paid = working.payments.reduce((sum, payment) => sum + payment.amount, 0)
+
   const invoice: Invoice = {
     id,
     patient_id: working.patientId,
@@ -195,18 +225,32 @@ function invoiceOf(
     origin: 'NATIVE',
     legacy_reference: null,
     draft_version: working.draftVersion,
-    ledger_version: issued === null ? null : 1,
+    // 1 à l'émission puis +1 par encaissement consolidé (comme le compteur du journal et `ledger_version` du serveur).
+    ledger_version: issued === null ? null : 1 + working.payments.length,
     balance: {
       total_gross: total,
-      paid_net: 0,
+      paid_net: paid,
       credited: 0,
       refunded: 0,
-      balance_due: issued === null ? 0 : total,
+      balance_due: issued === null ? 0 : total - paid,
       credit_available: 0,
-      settlement: issued === null ? 'NOT_ISSUED' : total === 0 ? 'SETTLED' : 'UNPAID',
+      settlement: settlementOf(issued !== null, total, paid),
     },
     lines,
-    payments: [],
+    payments: working.payments.map((payment) => ({
+      id: payment.id,
+      amount: payment.amount,
+      method: payment.method,
+      reference: payment.reference,
+      effective_at: payment.effectiveAt,
+      confirmed_at: payment.recordedAt,
+      status: 'CONFIRMED',
+      receipt_id: payment.receiptId,
+      receipt_number: payment.receiptNumber,
+      reversed_amount: 0,
+      received_by: context.issuer?.userId ?? '',
+      received_by_name: context.issuer?.displayName ?? null,
+    })),
     reversals: [],
     credit_notes: [],
     refunds: [],
@@ -238,7 +282,37 @@ export function foldLocalInvoices(
         draftVersion: 1,
         lines: Array.isArray(payload['lines']) ? payload['lines'] : [],
         issued: null,
+        payments: [],
         state,
+      })
+      continue
+    }
+    if (fact.commandName === 'RegisterPayment') {
+      // Seuls les encaissements CONSOLIDÉS entrent dans la facture : ceux qui attendent encore leur ACK restent « du poste »
+      // (`localPayments`, avec leur état), pour ne jamais être pris pour des pièces du serveur.
+      const owner = drafts.get(id)
+      const paymentId = text(payload['payment_id'])
+      const amount = payload['amount']
+      const method = text(payload['method'])
+      if (
+        owner === undefined ||
+        owner.issued === null ||
+        state !== 'acknowledged' ||
+        paymentId === null ||
+        typeof amount !== 'number' ||
+        !isPaymentMethod(method)
+      ) {
+        continue
+      }
+      owner.payments.push({
+        id: paymentId,
+        amount,
+        method,
+        reference: text(payload['reference']),
+        effectiveAt: text(payload['effective_at']) ?? fact.recordedAt,
+        recordedAt: fact.recordedAt,
+        receiptId: text(payload['receipt_id']),
+        receiptNumber: fact.number,
       })
       continue
     }

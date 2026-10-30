@@ -552,3 +552,143 @@ describe('priorité de la copie du poste', () => {
     }
   })
 })
+
+describe('encaissements consolidés d’une facture du poste', () => {
+  function paid(
+    id: string,
+    amount: number,
+    state: LocalPaymentState,
+    receipt = 'TEST-REC-2026-900001',
+  ): LocalFactLike {
+    return fact(
+      'RegisterPayment',
+      {
+        payment_id: id,
+        amount,
+        method: 'MTN_MOMO',
+        reference: `REF-${id}`,
+        effective_at: '2026-10-28T12:00:00.000Z',
+        receipt_id: `RC-${id}`,
+      },
+      state,
+      receipt,
+    )
+  }
+
+  it('les encaissements que le serveur a acquittés font partie de la facture : encaissé, reste dû, version du grand livre', () => {
+    const map = foldLocalInvoices(
+      [draft([line(LINE_1, 1)]), issue('acknowledged'), paid('P1', 30000, 'acknowledged')],
+      context(),
+    )
+    const invoice = map.get(INVOICE)?.invoice
+
+    expect(invoice?.balance).toMatchObject({
+      paid_net: 30000,
+      balance_due: 50000,
+      settlement: 'PARTIALLY_PAID',
+    })
+    expect(invoice?.ledger_version).toBe(2)
+    expect(invoice?.payments).toEqual([
+      {
+        id: 'P1',
+        amount: 30000,
+        method: 'MTN_MOMO',
+        reference: 'REF-P1',
+        effective_at: '2026-10-28T12:00:00.000Z',
+        confirmed_at: expect.any(String),
+        status: 'CONFIRMED',
+        receipt_id: 'RC-P1',
+        receipt_number: 'TEST-REC-2026-900001',
+        reversed_amount: 0,
+        received_by: '01J9ZXK4M2Q8R7S6T5V4W3US01',
+        received_by_name: 'Gérante fictive',
+      },
+    ])
+  })
+
+  it('acompte puis solde acquittés : reste nul, « soldée » au sens du serveur, deux encaissements comptés', () => {
+    const map = foldLocalInvoices(
+      [
+        draft([line(LINE_1, 1)]),
+        issue('acknowledged'),
+        paid('P1', 30000, 'acknowledged', 'TEST-REC-2026-900001'),
+        paid('P2', 50000, 'acknowledged', 'TEST-REC-2026-900002'),
+      ],
+      context(),
+    )
+    const invoice = map.get(INVOICE)?.invoice
+
+    expect(invoice?.balance).toMatchObject({
+      paid_net: 80000,
+      balance_due: 0,
+      settlement: 'SETTLED',
+    })
+    expect(invoice?.ledger_version).toBe(3)
+    expect(invoice?.payments.map((payment) => payment.receipt_number)).toEqual([
+      'TEST-REC-2026-900001',
+      'TEST-REC-2026-900002',
+    ])
+  })
+
+  it('un encaissement qui attend encore son ACK reste hors de la facture : il s’affiche à part, avec son état', () => {
+    const map = foldLocalInvoices(
+      [
+        draft([line(LINE_1, 1)]),
+        issue('acknowledged'),
+        paid('P1', 30000, 'acknowledged'),
+        paid('P2', 50000, 'pending', 'TEST-REC-2026-900002'),
+        paid('P3', 1000, 'conflict', 'TEST-REC-2026-900003'),
+      ],
+      context(),
+    )
+    const invoice = map.get(INVOICE)?.invoice
+
+    expect(invoice?.payments.map((payment) => payment.id)).toEqual(['P1'])
+    expect(invoice?.balance.paid_net).toBe(30000)
+    expect(invoice?.ledger_version).toBe(2)
+  })
+
+  it('un encaissement illisible, ou d’une facture qui n’est pas encore émise sur le poste, est ignoré', () => {
+    const map = foldLocalInvoices(
+      [
+        draft([line(LINE_1, 1)]),
+        fact(
+          'RegisterPayment',
+          { payment_id: 'P0', amount: 500, method: 'MTN_MOMO' },
+          'acknowledged',
+        ),
+        issue('acknowledged'),
+        fact(
+          'RegisterPayment',
+          { payment_id: 'P1', amount: 'beaucoup', method: 'MTN_MOMO' },
+          'acknowledged',
+        ),
+        fact('RegisterPayment', { payment_id: 'P2', amount: 100, method: 'TROC' }, 'acknowledged'),
+        fact('RegisterPayment', { amount: 100, method: 'MTN_MOMO' }, 'acknowledged'),
+      ],
+      context(),
+    )
+    const invoice = map.get(INVOICE)?.invoice
+
+    expect(invoice?.payments).toEqual([])
+    expect(invoice?.balance).toMatchObject({
+      paid_net: 0,
+      balance_due: 80000,
+      settlement: 'UNPAID',
+    })
+    expect(invoice?.ledger_version).toBe(1)
+  })
+
+  it('un trop-perçu consolidé se dit « en crédit », jamais un reste négatif présenté comme dû', () => {
+    const map = foldLocalInvoices(
+      [draft([line(LINE_1, 1)]), issue('acknowledged'), paid('P1', 90000, 'acknowledged')],
+      context(),
+    )
+
+    expect(map.get(INVOICE)?.invoice.balance).toMatchObject({
+      paid_net: 90000,
+      balance_due: -10000,
+      settlement: 'IN_CREDIT',
+    })
+  })
+})

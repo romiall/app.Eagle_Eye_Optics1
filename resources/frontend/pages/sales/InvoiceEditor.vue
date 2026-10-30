@@ -156,7 +156,11 @@ useUnsavedChangesGuard(dirty)
 const saving = computed(() => draftMutation.state.value === 'saving')
 const issuing = computed(() => issueMutation.state.value === 'saving')
 const abandoning = computed(() => abandonMutation.state.value === 'saving')
-const busy = computed(() => saving.value || issuing.value || abandoning.value)
+/** Facture émise sur le poste mais non relisible ici : l'écran ne propose plus ni modification ni nouvelle émission. */
+const lockedAfterLocalIssue = ref(false)
+const busy = computed(
+  () => saving.value || issuing.value || abandoning.value || lockedAfterLocalIssue.value,
+)
 
 const draftFailure = computed(() =>
   draftMutation.state.value === 'conflict' ? null : salesFailureView(draftMutation.state.value),
@@ -295,14 +299,22 @@ function afterServerInvoice(invoice: Invoice): void {
  * Facture que le poste vient d'enregistrer, relue dans le coffre (`getInvoice` rend la copie du poste tant que le serveur
  * ne l'a pas consolidée). Null si elle ne peut pas être reconstruite ici : la pièce reste dans le journal du poste.
  */
-async function readDeviceInvoice(invoiceId: string): Promise<Invoice | null> {
+async function readDeviceInvoice(
+  invoiceId: string,
+  status: 'DRAFT' | 'ISSUED',
+): Promise<Invoice | null> {
   try {
     const result = await getInvoice(invoiceId)
-    return result.data.id === invoiceId ? result.data : null
+    // Une facture émise sur le poste que le poste ne sait pas reconstruire (patient du serveur seulement) se relit sur
+    // le serveur comme son BROUILLON : ce n'est pas la facture émise, elle n'est jamais présentée comme telle.
+    return result.data.id === invoiceId && result.data.status === status ? result.data : null
   } catch {
     return null
   }
 }
+
+const ISSUED_NOT_READ_ON_DEVICE =
+  'La facture est émise sur ce poste mais n’a pas pu y être relue (identité du patient ou en-tête du cabinet inconnus du poste) : elle part à la synchronisation. Ne l’émettez pas de nouveau ; elle s’affichera au retour du serveur.'
 
 const NOT_READ_ON_DEVICE =
   'La pièce est enregistrée sur ce poste mais n’a pas pu y être relue (identité du patient ou en-tête du cabinet inconnus du poste) : elle part à la synchronisation, ne la refaites pas.'
@@ -326,7 +338,8 @@ async function afterSave(result: MutationOutcome, creating: boolean): Promise<vo
     case 'saved-local': {
       // Enregistré sur ce poste (poste préparé) : rien n'est dit « sur le serveur », qui ne connaît pas encore le brouillon.
       savedAt.value = result.at
-      const invoice = lastSent === null ? null : await readDeviceInvoice(lastSent.invoiceId)
+      const invoice =
+        lastSent === null ? null : await readDeviceInvoice(lastSent.invoiceId, 'DRAFT')
       if (invoice === null) {
         generalErrors.value = [NOT_READ_ON_DEVICE]
         await summaryBox.value?.focus()
@@ -522,9 +535,11 @@ async function afterIssue(result: MutationOutcome): Promise<void> {
     case 'saved-local': {
       // Émise sur ce poste : numéro de la plage du poste, définitif ; le serveur la reçoit à la synchronisation.
       const base = baseline.value
-      const invoice = base === null ? null : await readDeviceInvoice(base.id)
+      const invoice = base === null ? null : await readDeviceInvoice(base.id, 'ISSUED')
       if (invoice === null) {
-        generalErrors.value = [NOT_READ_ON_DEVICE]
+        // Émise sur le poste mais non relisible ici : plus rien ne s'édite ni ne s'émet depuis cet écran.
+        lockedAfterLocalIssue.value = true
+        generalErrors.value = [ISSUED_NOT_READ_ON_DEVICE]
         await summaryBox.value?.focus()
         return
       }
@@ -686,8 +701,10 @@ async function retryAbandon(): Promise<void> {
 
 /** « Enregistré sur le serveur à… » tant que rien n'a changé depuis ; une nouvelle saisie l'efface. */
 const saveStatus = computed(() => {
-  if (draftMutation.state.value !== 'synced') return draftMutation.saveState.value
-  return dirty.value ? 'idle' : 'saved-server'
+  const state = draftMutation.state.value
+  if (state !== 'synced' && state !== 'saved-local') return draftMutation.saveState.value
+  if (dirty.value) return 'idle'
+  return state === 'synced' ? 'saved-server' : draftMutation.saveState.value
 })
 </script>
 
@@ -863,7 +880,7 @@ const saveStatus = computed(() => {
         <AppButton
           v-if="canIssue && baseline"
           variant="secondary"
-          :disabled="!issueReady || saving"
+          :disabled="!issueReady || saving || lockedAfterLocalIssue"
           :pending="issuing"
           pending-label="Émission en cours…"
           @click="requestIssue"

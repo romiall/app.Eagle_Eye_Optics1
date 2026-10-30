@@ -478,3 +478,60 @@ describe('poste préparé : brouillon et émission enregistrés sur le poste (G1
     unmount()
   })
 })
+
+describe('poste préparé : relecture vérifiée et état d’enregistrement exact (revue A1)', () => {
+  function journalOf(names: string[]): MutationDispatcher {
+    return {
+      dispatch: async (request) => {
+        names.push(request.name)
+        return { kind: 'saved-local', at: '2026-10-15T09:42:00.000Z' }
+      },
+    }
+  }
+
+  it('une émission sur le poste dont la relecture ne rend que le brouillon du serveur n’est jamais présentée comme émise, et plus rien ne s’édite', async () => {
+    const api = server()
+    // Patient du serveur seulement : le poste ne sait pas reconstruire la facture émise, le serveur ne connaît que le brouillon.
+    api.on('GET', /^\/api\/v1\/invoices\/([^/]+)$/, () => json(200, { data: draftInvoice() }))
+    const names: string[] = []
+
+    const { root, unmount } = await openApp(`/ventes/factures/${INVOICE_ID}`, {
+      dispatcher: journalOf(names),
+    })
+    await click(buttonByName(root, 'Émettre la facture'))
+    await click(dialogButton(root, 'Émettre la facture'))
+
+    await vi.waitFor(() => expect(names).toEqual(['IssueInvoice']))
+    await vi.waitFor(() => expect(textOf(root)).toContain('Ne l’émettez pas de nouveau'))
+    expect(textOf(root)).not.toContain('Facture émise sur ce poste : numéro')
+    expect(root.querySelector('h1')?.textContent).not.toContain('TEST-FAC')
+    expect(buttonByName(root, 'Émettre la facture')?.disabled).toBe(true)
+    // Une seconde demande d’émission n’envoie rien de plus.
+    await click(buttonByName(root, 'Émettre la facture'))
+    expect(names).toEqual(['IssueInvoice'])
+
+    unmount()
+  })
+
+  it('« Enregistré sur ce poste » disparaît dès qu’une nouvelle saisie n’est pas enregistrée', async () => {
+    const api = server()
+    api.on('GET', /^\/api\/v1\/invoices\/([^/]+)$/, () => json(200, { data: draftInvoice() }))
+    const names: string[] = []
+
+    const { root, unmount } = await openApp(`/ventes/factures/${INVOICE_ID}`, {
+      dispatcher: journalOf(names),
+    })
+    const quantity = root.querySelector<HTMLInputElement>('input[id$="-quantity"]')
+    if (quantity === null) throw new Error('Champ de quantité introuvable.')
+    await typeInto(root, quantity.id, '3')
+    await click(buttonByName(root, 'Enregistrer le brouillon'))
+    await vi.waitFor(() => expect(textOf(root)).toContain('Enregistré sur ce poste'))
+
+    const next = root.querySelector<HTMLInputElement>('input[id$="-quantity"]')
+    if (next === null) throw new Error('Champ de quantité introuvable.')
+    await typeInto(root, next.id, '4')
+
+    expect(textOf(root)).not.toContain('Enregistré sur ce poste')
+    unmount()
+  })
+})

@@ -273,6 +273,12 @@ export const PAGES_DEVIS_CATALOGUE: readonly PageHelp[] = [
         anyPermission: ['invoice.create'],
       },
       {
+        label: 'Supprimer le brouillon',
+        effect:
+          'Après confirmation, supprime un devis jamais émis avec ses lignes, par son créateur ou la gérante. Un devis émis se révise.',
+        anyPermission: ['invoice.create'],
+      },
+      {
         label: 'Émettre le devis',
         effect:
           'Après confirmation, attribue le numéro du devis et fige la révision 1. Actif quand le brouillon est enregistré et a une validité.',

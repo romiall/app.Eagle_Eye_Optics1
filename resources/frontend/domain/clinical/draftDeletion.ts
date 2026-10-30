@@ -60,3 +60,43 @@ export function modifyKind(exam: ExamLike, viewer: Viewer): ModifyKind | null {
 export function modifyNote(kind: ModifyKind): string {
   return kind === 'correct' ? ' (correction : nouvelle révision motivée, rien n’est écrasé)' : ''
 }
+
+// --- Autres brouillons et annulations (chantier « CRUD des écrans », tranche 3a) ----------------------------------
+// Mêmes principes : règles d'AFFICHAGE seulement, le serveur refuse tout autre cas (409 état, 403 qui).
+
+/**
+ * « Supprimer le brouillon » d'une prescription optique : un brouillon seulement (une validée est immuable, elle se
+ * corrige par une nouvelle version), avec l'écriture et la lecture cliniques ; aucun auteur n'est conservé sur un
+ * brouillon de prescription, celui qui peut le modifier peut le supprimer.
+ */
+export function canDeletePrescriptionDraft(
+  prescription: { status: string },
+  viewer: Viewer,
+): boolean {
+  return (
+    prescription.status === 'DRAFT' && viewer.can('clinical.write') && viewer.can('clinical.read')
+  )
+}
+
+/**
+ * « Supprimer le brouillon » d'un devis : un brouillon seulement (un devis émis se révise), pour son créateur ou la
+ * gérante (`approval.decide`), comme sa modification, avec `invoice.create`.
+ */
+export function canDeleteQuoteDraft(
+  quote: { status: string; createdBy: string },
+  viewer: Viewer,
+): boolean {
+  if (quote.status !== 'DRAFT' || !viewer.can('invoice.create')) return false
+  return (
+    (viewer.accountId !== null && quote.createdBy === viewer.accountId) ||
+    viewer.can(MANAGER_PERMISSION)
+  )
+}
+
+/**
+ * « Annuler le contrôle » recommandé : tant qu'il est actif (un contrôle programmé par un rendez-vous s'annule en
+ * annulant d'abord le rendez-vous), pour qui programme les contrôles, avec la lecture clinique (son motif est clinique).
+ */
+export function canCancelFollowUp(plan: { status: string }, viewer: Viewer): boolean {
+  return plan.status === 'ACTIVE' && viewer.can('follow_up.write') && viewer.can('clinical.read')
+}

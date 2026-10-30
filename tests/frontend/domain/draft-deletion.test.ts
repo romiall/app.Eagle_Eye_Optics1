@@ -1,7 +1,10 @@
 import { describe, expect, it } from 'vitest'
 
 import {
+  canCancelFollowUp,
   canDeleteDraftExam,
+  canDeletePrescriptionDraft,
+  canDeleteQuoteDraft,
   isDraftExam,
   MANAGER_PERMISSION,
   modifyKind,
@@ -100,5 +103,66 @@ describe('modifier un examen', () => {
   it('dit ce que fait « Modifier » : une correction écrit une nouvelle révision', () => {
     expect(modifyNote('correct')).toContain('nouvelle révision')
     expect(modifyNote('continue')).toBe('')
+  })
+})
+
+describe('brouillon de prescription', () => {
+  it('seul un brouillon se supprime, avec l’écriture et la lecture cliniques', () => {
+    const writer = viewer(AUTHOR, 'clinical.read', 'clinical.write')
+
+    expect(canDeletePrescriptionDraft({ status: 'DRAFT' }, writer)).toBe(true)
+    expect(canDeletePrescriptionDraft({ status: 'VALIDATED' }, writer)).toBe(false)
+    expect(canDeletePrescriptionDraft({ status: 'DRAFT' }, viewer(AUTHOR, 'clinical.read'))).toBe(
+      false,
+    )
+    expect(canDeletePrescriptionDraft({ status: 'DRAFT' }, viewer(AUTHOR, 'clinical.write'))).toBe(
+      false,
+    )
+  })
+
+  it('aucun auteur n’est conservé : un autre compte qui peut écrire le supprime aussi', () => {
+    expect(
+      canDeletePrescriptionDraft(
+        { status: 'DRAFT' },
+        viewer(OTHER, 'clinical.read', 'clinical.write'),
+      ),
+    ).toBe(true)
+  })
+})
+
+describe('brouillon de devis', () => {
+  const quote = (status: string, createdBy = AUTHOR) => ({ status, createdBy })
+
+  it('seul un brouillon se supprime ; un devis émis, accepté, refusé, expiré ou converti non', () => {
+    const creator = viewer(AUTHOR, 'invoice.create')
+
+    expect(canDeleteQuoteDraft(quote('DRAFT'), creator)).toBe(true)
+    for (const status of ['ISSUED', 'ACCEPTED', 'DECLINED', 'EXPIRED', 'CONVERTED']) {
+      expect(canDeleteQuoteDraft(quote(status), creator)).toBe(false)
+    }
+  })
+
+  it('son créateur ou la gérante, avec invoice.create ; un autre compte de la caisse non', () => {
+    expect(canDeleteQuoteDraft(quote('DRAFT'), viewer(OTHER, 'invoice.create'))).toBe(false)
+    expect(
+      canDeleteQuoteDraft(quote('DRAFT'), viewer(OTHER, 'invoice.create', MANAGER_PERMISSION)),
+    ).toBe(true)
+    expect(canDeleteQuoteDraft(quote('DRAFT'), viewer(AUTHOR))).toBe(false)
+    expect(canDeleteQuoteDraft(quote('DRAFT'), viewer(null, 'invoice.create'))).toBe(false)
+  })
+})
+
+describe('contrôle recommandé', () => {
+  it('seul un contrôle actif s’annule, pour qui programme les contrôles avec la lecture clinique', () => {
+    const planner = viewer(AUTHOR, 'follow_up.write', 'clinical.read')
+
+    expect(canCancelFollowUp({ status: 'ACTIVE' }, planner)).toBe(true)
+    for (const status of ['SCHEDULED', 'CLOSED', 'CANCELLED']) {
+      expect(canCancelFollowUp({ status }, planner)).toBe(false)
+    }
+    expect(canCancelFollowUp({ status: 'ACTIVE' }, viewer(AUTHOR, 'follow_up.write'))).toBe(false)
+    expect(
+      canCancelFollowUp({ status: 'ACTIVE' }, viewer(AUTHOR, 'agenda.write', 'clinical.read')),
+    ).toBe(false)
   })
 })

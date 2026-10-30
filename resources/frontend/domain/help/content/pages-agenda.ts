@@ -519,6 +519,12 @@ export const PAGES_AGENDA: readonly PageHelp[] = [
         anyPermission: ['agenda.write'],
       },
       {
+        label: 'Annuler le contrôle',
+        effect:
+          'Annule un contrôle actif avec un motif obligatoire ; il reste lisible dans la consultation. S’il est programmé par un rendez-vous, annulez d’abord celui-ci.',
+        anyPermission: ['follow_up.write'],
+      },
+      {
         label: 'Retour à l’agenda',
         effect: 'Revient à l’agenda.',
       },

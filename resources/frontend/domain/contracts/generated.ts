@@ -730,6 +730,9 @@ SchemasRequestsHttpJsonMergePatientsRequest?: MergePatientsRequest
 SchemasRequestsHttpJsonRecordCashMovementRequest?: RecordCashMovementRequest
 SchemasRequestsHttpJsonExpenseCategoryRequest?: ExpenseCategoryRequest
 SchemasRequestsHttpJsonCashVarianceReviewRequest?: CashVarianceReviewRequest
+SchemasRequestsHttpJsonDeletePrescriptionDraftRequest?: DeletePrescriptionDraftRequest
+SchemasRequestsHttpJsonDeleteQuoteDraftRequest?: DeleteQuoteDraftRequest
+SchemasRequestsHttpJsonCancelFollowUpRequest?: CancelFollowUpRequest
 SchemasRequestsHttpJsonDeleteConsultationDraftRequest?: DeleteConsultationDraftRequest
 SchemasRequestsHttpJsonCancelVisitRequest?: CancelVisitRequest
 SchemasRequestsHttpJsonOpeningStockRequest?: OpeningStockRequest
@@ -780,6 +783,8 @@ SchemasResourcesBillingJsonQuoteRevision?: QuoteRevision
 SchemasResourcesBillingJsonQuote?: Quote
 SchemasResourcesBillingJsonQuoteSummary?: QuoteSummary
 SchemasResourcesBillingJsonQuoteResponse?: QuoteResponse
+SchemasResourcesBillingJsonQuoteDeletion?: QuoteDeletion
+SchemasResourcesBillingJsonDeleteQuoteDraftResponse?: DeleteQuoteDraftResponse
 SchemasResourcesBillingJsonQuotePage?: QuotePage
 SchemasResourcesBillingJsonInvoicePage?: InvoicePage
 SchemasResourcesBillingJsonPaymentResult?: PaymentResult
@@ -840,6 +845,8 @@ SchemasResourcesClinicalJsonPrescription?: Prescription
 SchemasResourcesClinicalJsonConsultationResponse?: ConsultationResponse
 SchemasResourcesClinicalJsonConsultationDeletion?: ConsultationDeletion
 SchemasResourcesClinicalJsonDeleteConsultationDraftResponse?: DeleteConsultationDraftResponse
+SchemasResourcesClinicalJsonPrescriptionDeletion?: PrescriptionDeletion
+SchemasResourcesClinicalJsonDeletePrescriptionDraftResponse?: DeletePrescriptionDraftResponse
 SchemasResourcesClinicalJsonPrescriptionResponse?: PrescriptionResponse
 SchemasResourcesClinicalJsonPrescriptionList?: PrescriptionList
 SchemasResourcesOperationsJsonPublicJwk?: PublicJwk
@@ -6295,6 +6302,29 @@ decision: ("ACCEPTED" | "DISPUTED")
 note: (string | null)
 }
 /**
+ * Suppression d'un brouillon de prescription : jeton de concurrence expected_updated_at lu avec la prescription (elle n'a pas de colonne version, expected_version vaut null). Refusée (409) si la prescription est validée ou déjà utilisée par une facture, une commande d'atelier ou un document.
+ */
+export interface DeletePrescriptionDraftRequest {
+expected_version: null
+prescription_id: Ulid
+expected_updated_at: Instant
+}
+/**
+ * Suppression d'un brouillon de devis jamais émis : version du brouillon attendue. Refusée (409) pour un devis émis, accepté, refusé, expiré ou converti ; son créateur ou la gérante seulement.
+ */
+export interface DeleteQuoteDraftRequest {
+expected_version: Version
+quote_id: Ulid
+}
+/**
+ * Annulation d'un contrôle recommandé encore actif : version du contrôle attendue, motif obligatoire (3 à 1 000 caractères, conservé dans l'audit). Refusée (409) si un rendez-vous le programme, s'il est déjà annulé ou clos.
+ */
+export interface CancelFollowUpRequest {
+expected_version: Version
+follow_up_plan_id: Ulid
+reason: string
+}
+/**
  * Suppression d'un examen resté brouillon (aucune rubrique enregistrée) : version de la consultation attendue. Refusée (409) si l'examen est en cours ou terminé, ou si une prescription validée, un contrôle recommandé ou une rubrique clinique y est rattaché.
  */
 export interface DeleteConsultationDraftRequest {
@@ -7330,6 +7360,16 @@ created_at: Instant
 }
 export interface QuoteResponse {
 data: Quote
+}
+/**
+ * Résultat de la suppression d'un brouillon de devis jamais émis : le devis et ses lignes n'existent plus.
+ */
+export interface QuoteDeletion {
+quote_id: Ulid
+lines: number
+}
+export interface DeleteQuoteDraftResponse {
+data: QuoteDeletion
 }
 export interface QuotePage {
 /**
@@ -8475,6 +8515,18 @@ visit_version: number
 }
 export interface DeleteConsultationDraftResponse {
 data: ConsultationDeletion
+}
+/**
+ * Résultat de la suppression d'un brouillon de prescription : la prescription n'existe plus (version_no : celle qu'elle portait ; la dernière version validée de sa série redevient la plus récente).
+ */
+export interface PrescriptionDeletion {
+prescription_id: Ulid
+patient_id: Ulid
+consultation_id: NullableUlid
+version_no: number
+}
+export interface DeletePrescriptionDraftResponse {
+data: PrescriptionDeletion
 }
 export interface PrescriptionResponse {
 data: Prescription

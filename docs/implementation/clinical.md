@@ -31,6 +31,7 @@ après la réponse du serveur seulement.
 | `POST /api/v1/prescriptions/external` | `clinical.write`, `clinical.read` | 201 `PrescriptionResponse` (`CreatePrescription`, ordonnance externe) |
 | `GET /api/v1/prescriptions/{id}` | `clinical.read` · débit limité | 200 `PrescriptionResponse` |
 | `PATCH /api/v1/prescriptions/{id}` | `clinical.write`, `clinical.read` | 200 `PrescriptionResponse` (`UpdatePrescriptionDraft`, en ligne seulement) |
+| `POST /api/v1/prescriptions/{id}/delete` | `clinical.write`, `clinical.read` | 200 `DeletePrescriptionDraftResponse` (`DeletePrescriptionDraft`, brouillon jamais utilisé seulement, en ligne seulement) |
 | `POST /api/v1/prescriptions/{id}/revisions` | `clinical.amend`, `clinical.read` | 201 `PrescriptionResponse` (`CreatePrescription`, nouvelle version) |
 | `POST /api/v1/prescriptions/{id}/validate` | `clinical.complete`, `clinical.read` | 200 `PrescriptionResponse` (`ValidatePrescription`) |
 
@@ -393,3 +394,30 @@ est celui des tranches suivantes.
   Jeu de contrats : `contracts/fixtures/resources/consultation-summary-page.*.json` portent `version`.
 - **Aide intégrée** : `domain/help/content/pages-consultations.ts` (écrans « Consultations » et « Consultation »).
 
+
+## Supprimer un brouillon de prescription (chantier « CRUD des écrans », tranche 3a)
+
+Commande `DeletePrescriptionDraft` (`DeletePrescriptionDraftHandler`, `POST /prescriptions/{id}/delete`, corps
+`DeletePrescriptionDraftRequest` = `prescription_id` + `expected_updated_at` + `expected_version: null`, réponse
+`DeletePrescriptionDraftResponse`). EN LIGNE seulement, comme la modification d'un brouillon (hors catalogue F06 :
+la source `SYNC` ou une tâche est refusée, 403 `ACTION_FORBIDDEN`).
+
+- **Quoi** : un BROUILLON jamais utilisé. Une prescription VALIDÉE est immuable (déclencheurs de la base) et se corrige par
+  une nouvelle version : 409 `STATE_TRANSITION_REFUSED` avec `details.current_status`. Une prescription désignée par une
+  ligne de facture, une commande d'atelier ou un document : 409. Un brouillon qui est la version N+1 d'une validée se
+  supprime sans toucher à la validée (elle redevient la dernière version, une autre N+1 peut être créée).
+- **Qui** : `clinical.write` et `clinical.read`, comme la modification (un brouillon de prescription ne conserve aucun
+  auteur : celui qui peut le modifier peut le supprimer). Accueil et caisse : 403.
+- **Jeton** : `expected_updated_at`, lu avec le brouillon (la table n'a pas de colonne `version`) ; un écart : 409
+  `VERSION_CONFLICT` avec `details.current_updated_at`.
+- **Effets** : les yeux et traitements du brouillon disparaissent avec lui ; le fichier d'une ordonnance externe éventuelle
+  reste dans `stored_files`. Audit `prescription.deleted` (série, version, origine, consultation, `supersedes_id` : aucune
+  valeur clinique) ; journal des changements : pierre tombale `ARCHIVED` (`entity_version` = numéro de version). Verrous :
+  cabinet, idempotence, dossier patient (45), consultation (47) quand la prescription est interne.
+- **Écrans** : « Supprimer le brouillon » dans la barre d'actions du brouillon enregistré, sur l'écran de prescription d'une
+  consultation (`PrescriptionsScreen.vue`) et sur les ordonnances externes du patient (`ExternalPrescriptions.vue`) ;
+  boîte `DeletePrescriptionDraftDialog.vue` ; l'édition se ferme, la liste est relue, un message dit le résultat. Règle
+  d'affichage : `canDeletePrescriptionDraft` (`domain/clinical/draftDeletion.ts`).
+- **Tests** : `tests/Feature/Clinical/DeletePrescriptionDraftTest.php`, `tests/frontend/consultations/prescription-delete.test.ts`,
+  `tests/frontend/domain/draft-deletion.test.ts`, `tests/e2e/external-prescription.spec.ts` (nouvelle version puis suppression
+  de son brouillon, la validée reste). Aide intégrée : fiches « Prescription optique » et « Ordonnances externes ».

@@ -260,3 +260,19 @@ profil qui reçoit ce code par dérogation a donc aussi ce pouvoir sur les broui
 bouton que dans ces cas (`domain/clinical/draftDeletion.ts`, testé par `draft-deletion.test.ts`) ; le serveur refait le
 contrôle à chaque commande (`DeleteConsultationDraftTest` : auteur, gérante, autre professionnel, accueil, caisse,
 dérogation). Un poste hors ligne ne détient pas cette commande : un grant ne la porte pas, la source `SYNC` est refusée.
+
+## Qui supprime ou annule un brouillon (chantier « CRUD des écrans », tranche 3a)
+
+**Aucune permission nouvelle ni élargie** (référentiel inchangé : 49 codes). Chaque règle reprend celle de la modification
+de la même pièce ; le serveur la refait à chaque commande (403 hors droit, 409 hors état) et l'écran ne montre le bouton que
+dans ces cas (`domain/clinical/draftDeletion.ts`, `draft-deletion.test.ts`).
+
+| Geste | Commande | Qui | Quand |
+| --- | --- | --- | --- |
+| Supprimer un brouillon de prescription | `DeletePrescriptionDraft` | `clinical.write` et `clinical.read` (professionnel, gérante) ; aucun auteur n'est conservé sur un brouillon | brouillon seulement, jamais utilisé |
+| Supprimer un brouillon de devis | `DeleteQuoteDraft` | `invoice.create`, ET le créateur du brouillon OU la gérante (`approval.decide`) | brouillon jamais émis seulement |
+| Annuler un contrôle recommandé | `CancelFollowUp` | `follow_up.write` et `clinical.read` (professionnel, gérante), motif obligatoire | contrôle `ACTIVE` seulement |
+
+Accueil : aucun de ces gestes (pas de `clinical.write`, ni `invoice.create`, ni `follow_up.write`). Caisse : seulement le
+brouillon de devis dont elle est la créatrice. Les trois commandes sont en ligne seulement : un grant de poste ne les porte
+pas et la source `SYNC` est refusée. Tests : `DeletePrescriptionDraftTest`, `DeleteQuoteDraftTest`, `FollowUpsTest`.

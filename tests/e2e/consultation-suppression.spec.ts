@@ -235,6 +235,25 @@ test.describe('suppression d’un examen resté brouillon (C01) sur la vraie app
     expect(completed.json.error?.code).toBe('STATE_TRANSITION_REFUSED')
     expect(completed.json.error?.details?.['current_status']).toBe('COMPLETED')
 
+    // Contrôle recommandé de l'examen terminé : il se programme puis s'annule avec un motif (jamais supprimé : il reste
+    // lisible dans la consultation, marqué annulé).
+    const panel = page.locator('section[aria-labelledby="titre-controle"]')
+    await panel.getByRole('button', { name: 'Programmer un contrôle' }).click()
+    await expect(
+      panel.getByRole('status').filter({ hasText: 'Date recommandée' }),
+    ).not.toContainText('à compléter')
+    await panel.getByRole('button', { name: 'Enregistrer le contrôle' }).click()
+    await expect(panel).toContainText('Contrôle recommandé enregistré sur le serveur.')
+    await panel.getByRole('button', { name: /^Annuler le contrôle de/ }).click()
+    const cancelFollowUp = page.getByRole('dialog', { name: /^Annuler le contrôle de/ })
+    await cancelFollowUp.getByRole('button', { name: 'Annuler le contrôle' }).click()
+    await expect(cancelFollowUp).toContainText('Indiquez le motif de l’annulation')
+    await cancelFollowUp.getByLabel(/Motif de l’annulation/).fill('Patient suivi ailleurs (fictif)')
+    await cancelFollowUp.getByRole('button', { name: 'Annuler le contrôle' }).click()
+    await expect(panel).toContainText('Le contrôle recommandé a été annulé')
+    await expect(panel.getByText('Annulé', { exact: true })).toBeVisible()
+    await expect(panel.getByRole('button', { name: /^Annuler le contrôle de/ })).toHaveCount(0)
+
     // Dans la liste, « Modifier » d'un examen terminé ouvre la correction (nouvelle révision), jamais « Supprimer ».
     await page.goto('/consultations')
     const completedCard = page.locator('li.card').filter({ hasText: new RegExp(lastName, 'i') })

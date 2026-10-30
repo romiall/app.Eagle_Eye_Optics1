@@ -308,7 +308,7 @@ export const PAGES_CONSULTATIONS: readonly PageHelp[] = [
     tips: [
       'Au centrage, le total et l’écart de chaque œil se saisissent séparément. L’écran propose la somme OD + OG, à reporter avec « Reporter la somme dans l’écart total » ; si elle diffère du total saisi, « Justification de l’écart » est obligatoire.',
       'Les médicaments se saisissent librement : aucune base de médicaments, aucune posologie complétée. « Monter » et « Descendre » règlent l’ordre de l’ordonnance. Prescrire ne crée ni vente ni mouvement de stock.',
-      'Sous l’examen, le bloc « Contrôle recommandé » permet de « Programmer un contrôle ». Il n’apparaît que si l’agenda est ouvert pour votre compte.',
+      'Sous l’examen, le bloc « Contrôle recommandé » permet de « Programmer un contrôle » ou d’« Annuler le contrôle » encore actif. Il n’apparaît que si l’agenda est ouvert pour votre compte.',
       'Quitter l’écran avec une saisie en attente demande confirmation : « Des saisies ne sont pas encore enregistrées. Quitter cet écran sans les enregistrer ? » L’examen s’ouvre toujours à l’étape 1.',
       'Pendant l’examen, le bloc « Prescription optique » ouvre la prescription de lunettes. Une fois l’examen terminé, « Transmettre à la caisse » (comptes qui facturent) ouvre la facture avec le patient et la visite déjà choisis ; les autres lisent où la caisse la crée. Sans droit de saisie, l’écran affiche « Lecture seule » : seule la navigation entre les étapes fonctionne.',
     ],
@@ -523,6 +523,12 @@ export const PAGES_CONSULTATIONS: readonly PageHelp[] = [
         effect: 'Abandonne les modifications non enregistrées du brouillon en cours.',
       },
       {
+        label: 'Supprimer le brouillon',
+        effect:
+          'Après confirmation, supprime la prescription tant qu’elle est un brouillon jamais validé ni utilisé. Une validée ne se supprime pas : créez-en une nouvelle version.',
+        anyPermission: ['clinical.write'],
+      },
+      {
         label: 'Retour à la consultation',
         effect: 'Revient à l’examen.',
       },
@@ -679,6 +685,12 @@ export const PAGES_CONSULTATIONS: readonly PageHelp[] = [
       {
         label: 'Annuler',
         effect: 'Abandonne les modifications non enregistrées du brouillon.',
+      },
+      {
+        label: 'Supprimer le brouillon',
+        effect:
+          'Après confirmation, supprime la transcription tant qu’elle est un brouillon jamais validé. Une validée ne se supprime pas : créez-en une nouvelle version.',
+        anyPermission: ['clinical.write'],
       },
       {
         label: 'Identité',

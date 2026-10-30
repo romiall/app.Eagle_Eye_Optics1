@@ -47,6 +47,28 @@ technique : `clinical.md`, « Modifier et supprimer un examen » ; droits : `acc
   `consultation-suppression.spec.ts` sur la vraie application (suppression, redémarrage, refus d'un examen en cours et d'un
   examen terminé par le serveur, correction depuis « Modifier ») ; captures 1366 et 360 px.
 
+## Chantier « CRUD des écrans », tranches 2 et 3a : inventaire, brouillons et annulation (2026-10-30)
+
+Branche `claude/crud-ecrans-suite`, empilée sur `claude/crud-ecrans`. La tranche 1 a été mise en ligne le 2026-10-30 à la demande
+du demandeur (release `eeo-20261030T1628Z-6d1b2bb`, CI verte run 41079465699).
+
+- **Tranche 2** : `docs/implementation/crud.md`, matrice entité par entité (créer, lire, modifier, supprimer ou équivalent),
+  ce qui existe côté serveur et écran, règle de suppression retenue et justifiée par les sources, décisions proposées pour la
+  tranche 3. Constat : la plupart des gestes existent déjà (annuler une visite, abandonner un brouillon de facture, annuler
+  ou déplacer un rendez-vous, désactiver un article, un compte, une ressource) ; il manquait la suppression d'un brouillon de
+  prescription et de devis, l'annulation d'un contrôle recommandé et l'archivage d'un patient.
+- **Tranche 3a** : trois commandes en ligne seulement, par le chemin central, sans permission nouvelle ni migration :
+  `DeletePrescriptionDraft` (brouillon jamais utilisé, jeton `expected_updated_at`, la validée reste), `DeleteQuoteDraft`
+  (brouillon jamais émis, créateur ou gérante, version attendue, lignes supprimées avec lui), `CancelFollowUp` (contrôle
+  `ACTIF`, motif obligatoire, rappels clos, le contrôle reste lisible). Tous : 409 hors état, 403 hors droit, audit sans contenu
+  clinique, pierre tombale `ARCHIVED`, rejeu idempotent. Écrans : « Supprimer le brouillon » (prescription d'une consultation,
+  ordonnances externes, devis), « Annuler le contrôle » (panneau de la consultation, patients à revoir). Aide intégrée à jour.
+  Détail : `clinical.md`, `billing.md`, `agenda.md`, `access.md`.
+- **Reste (3b)** : archivage du patient (`ArchivePatient`, `RestorePatient`), question d'affaires posée au demandeur avec sa
+  recommandation (gérante, motif, réversible, garde-fous de la fusion).
+- **Leçon d'outillage** : un MySQL de test arrêté fait SAUTER les tests PHPUnit (« Skipped ») au lieu d'échouer quand
+  `EEO_REQUIRE_MYSQL` n'est pas posé : toujours lire la ligne « Skipped » du résumé, ou poser `EEO_REQUIRE_MYSQL=1`.
+
 ## Priorité du demandeur (2026-10-22), réestimation et écarts de planning
 
 **Décision du demandeur (message du 2026-10-22).** La cliente a payé la moitié de la création et

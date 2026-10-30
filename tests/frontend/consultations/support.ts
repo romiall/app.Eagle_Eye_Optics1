@@ -277,6 +277,8 @@ export interface ConsultationApi {
   createPrescription: Handler<[path: string, body: Record<string, unknown>, request: Recorded]>
   getPrescription: Handler<[id: string, request: Recorded]>
   updatePrescription: Handler<[id: string, body: Record<string, unknown>, request: Recorded]>
+  /** Suppression d'un brouillon de prescription (POST /prescriptions/:id/delete). */
+  deletePrescription: Handler<[id: string, body: Record<string, unknown>, request: Recorded]>
   validatePrescription: Handler<[id: string, body: Record<string, unknown>, request: Recorded]>
   requests: Recorded[]
   fetchMock: Mock
@@ -294,6 +296,7 @@ const CONSULTATION_PRESCRIPTIONS_PATH = /^\/api\/v1\/consultations\/([^/]+)\/pre
 const PRESCRIPTION_PATH = /^\/api\/v1\/prescriptions\/([^/]+)$/
 const PRESCRIPTION_REVISION_PATH = /^\/api\/v1\/prescriptions\/([^/]+)\/revisions$/
 const PRESCRIPTION_VALIDATE_PATH = /^\/api\/v1\/prescriptions\/([^/]+)\/validate$/
+const PRESCRIPTION_DELETE_PATH = /^\/api\/v1\/prescriptions\/([^/]+)\/delete$/
 const SCALES_PATH = /^\/api\/v1\/visual-acuity-scales$/
 
 /** Adresses des routes C02 à C04, pour filtrer les requêtes enregistrées. */
@@ -304,6 +307,7 @@ export const PATHS = {
   revision: REVISION_PATH,
   consultationPrescriptions: CONSULTATION_PRESCRIPTIONS_PATH,
   prescription: PRESCRIPTION_PATH,
+  prescriptionDelete: PRESCRIPTION_DELETE_PATH,
   prescriptionRevision: PRESCRIPTION_REVISION_PATH,
   prescriptionValidate: PRESCRIPTION_VALIDATE_PATH,
   scales: SCALES_PATH,
@@ -353,6 +357,7 @@ export function stubConsultationApi(
         | 'createPrescription'
         | 'getPrescription'
         | 'updatePrescription'
+        | 'deletePrescription'
         | 'validatePrescription'
       >
     >
@@ -611,6 +616,32 @@ export function stubConsultationApi(
       return json(200, { data: next })
     })
 
+  api.deletePrescription =
+    options.handlers?.deletePrescription ??
+    ((id, body) => {
+      const found = findPrescription(id)
+      if (found === undefined) return apiError(404, 'RESOURCE_NOT_FOUND', 'Ressource introuvable.')
+      if (found.status !== 'DRAFT') {
+        return errorWithDetails(409, 'STATE_TRANSITION_REFUSED', 'Prescription validée.', {
+          current_status: found.status,
+        })
+      }
+      if (body['expected_updated_at'] !== found.updated_at) {
+        return errorWithDetails(409, 'VERSION_CONFLICT', 'Prescription modifiée entre-temps.', {
+          current_updated_at: found.updated_at,
+        })
+      }
+      api.prescriptions = api.prescriptions.filter((item) => item.id !== id)
+      return json(200, {
+        data: {
+          prescription_id: id,
+          patient_id: found.patient_id,
+          consultation_id: found.consultation_id,
+          version_no: found.version_no,
+        },
+      })
+    })
+
   api.validatePrescription =
     options.handlers?.validatePrescription ??
     ((id, body) => {
@@ -695,6 +726,16 @@ export function stubConsultationApi(
         PRESCRIPTION_REVISION_PATH.test(url.pathname))
     ) {
       return settle(api.createPrescription(url.pathname, body ?? {}, request))
+    }
+    const removedPrescription = PRESCRIPTION_DELETE_PATH.exec(url.pathname)
+    if (removedPrescription !== null && method === 'POST') {
+      return settle(
+        api.deletePrescription(
+          decodeURIComponent(removedPrescription[1] ?? ''),
+          body ?? {},
+          request,
+        ),
+      )
     }
     const validated = PRESCRIPTION_VALIDATE_PATH.exec(url.pathname)
     if (validated !== null && method === 'POST') {

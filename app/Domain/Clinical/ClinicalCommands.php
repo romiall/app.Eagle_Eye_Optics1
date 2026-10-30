@@ -7,6 +7,7 @@ use App\Domain\Clinical\Handlers\AmendConsultationHandler;
 use App\Domain\Clinical\Handlers\CompleteConsultationHandler;
 use App\Domain\Clinical\Handlers\CreatePrescriptionHandler;
 use App\Domain\Clinical\Handlers\DeleteConsultationDraftHandler;
+use App\Domain\Clinical\Handlers\DeletePrescriptionDraftHandler;
 use App\Domain\Clinical\Handlers\SaveClinicalStepHandler;
 use App\Domain\Clinical\Handlers\StartConsultationHandler;
 use App\Domain\Clinical\Handlers\UpdatePrescriptionDraftHandler;
@@ -101,6 +102,14 @@ final class ClinicalCommands
                 null,
                 true,
                 'schemas/requests/http.json#/$defs/DeleteConsultationDraftRequest',
+            ),
+            new CommandDefinition(
+                DeletePrescriptionDraftHandler::COMMAND,
+                DeletePrescriptionDraftHandler::class,
+                $onlineOnly,
+                null,
+                true,
+                'schemas/requests/http.json#/$defs/DeletePrescriptionDraftRequest',
             ),
         ];
     }

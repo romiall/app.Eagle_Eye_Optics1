@@ -143,8 +143,67 @@
         }
       }
     },
+    "ConsultationHeaderPatient": {
+      "description": "Identité administrative de base du patient de la consultation ouverte, avec sa profession (donnée du dossier administratif que le cabinet note dans son carnet), pour l’en-tête de l’écran. La liste des examens (ConsultationSummary) ne porte pas la profession.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "record_number",
+        "last_name",
+        "first_names",
+        "sex",
+        "birth_date",
+        "profession"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "../../schemas/common.json#/$defs/Ulid"
+        },
+        "record_number": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64
+        },
+        "last_name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 120
+        },
+        "first_names": {
+          "anyOf": [
+            {
+              "type": "string",
+              "minLength": 0,
+              "maxLength": 180
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "sex": {
+          "$ref": "../../schemas/enums.json#/$defs/patient_records.sex"
+        },
+        "birth_date": {
+          "$ref": "../../schemas/common.json#/$defs/NullableCivilDate"
+        },
+        "profession": {
+          "anyOf": [
+            {
+              "type": "string",
+              "minLength": 0,
+              "maxLength": 180
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      }
+    },
     "Consultation": {
-      "description": "Consultation complète : professionnel et gérante seulement (clinical.read). patient : identité administrative de base, pour l’en-tête (sans dépendre du module Patients).",
+      "description": "Consultation complète : professionnel et gérante seulement (clinical.read). patient : identité administrative de base et profession, pour l’en-tête (sans dépendre du module Patients).",
       "type": "object",
       "additionalProperties": false,
       "required": [
@@ -215,7 +274,7 @@
           "$ref": "../../schemas/common.json#/$defs/Version"
         },
         "patient": {
-          "$ref": "#/$defs/ConsultationPatient"
+          "$ref": "#/$defs/ConsultationHeaderPatient"
         },
         "steps": {
           "$ref": "../../schemas/clinical-steps.json#/$defs/AllSteps"

@@ -66,7 +66,7 @@ const SUBJECTIVE_COLUMNS: OpticalColumn[] = [
 
 const HINTS: Record<RefractionStage, string> = {
   AUTOREFRACTOR:
-    'Ticket de l’autoréfracteur : reportez les valeurs moyennes (AVG) de l’œil droit puis de l’œil gauche, puis l’écart pupillaire (PD) du ticket sous le tableau.',
+    'Ticket de l’autoréfracteur : reportez les valeurs moyennes (AVG) de R (œil droit, OD) puis de L (œil gauche, OG), puis l’écart pupillaire (PD) du ticket sous le tableau.',
   OBJECTIVE: 'Réfraction objective (sans l’avis du patient).',
   SUBJECTIVE: 'Réfraction subjective, avec addition.',
 }

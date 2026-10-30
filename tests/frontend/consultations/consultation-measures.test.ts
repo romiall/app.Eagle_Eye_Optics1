@@ -5,11 +5,12 @@ import {
   apiError,
   buttonByName,
   callsTo,
+  choice,
   choose,
   click,
   consultation,
   field,
-  hasField,
+  group,
   openConsultation,
   patchCalls,
   PATHS,
@@ -62,7 +63,7 @@ describe('étape 3 : acuité visuelle', () => {
 
     expect(callsTo(api, 'GET', PATHS.scales)).toHaveLength(1)
     expect(textOf(root)).toContain('Échelles de démonstration : non validées cliniquement')
-    await choose(root, 'Acuité de loin : échelle utilisée', SCALE_TENTHS)
+    await choice(root, 'Acuité de loin : échelle utilisée', 'Dixièmes (X/10)')
     await type(root, 'Acuité de loin, sans correction, OD', ' 8/10 ')
     await type(root, 'Acuité de loin, sans correction, OG', '0')
     await click(buttonByName(root, 'Enregistrer'))
@@ -111,9 +112,9 @@ describe('étape 3 : acuité visuelle', () => {
     await goToStep(root, 3)
 
     expect(textOf(root)).toContain('Aucune échelle d’acuité n’est configurée pour ce cabinet')
-    expect((field(root, 'Acuité de loin : échelle utilisée') as HTMLSelectElement).disabled).toBe(
-      true,
-    )
+    // Aucune échelle à choisir : ni liste, ni bouton radio, ni valeur usuelle proposée.
+    expect(() => group(root, 'Acuité de loin : échelle utilisée')).toThrow()
+    expect(root.querySelectorAll('input[type="radio"]')).toHaveLength(0)
     unmount()
   })
 
@@ -336,7 +337,7 @@ describe('étape 3 : valeurs usuelles de l’acuité', () => {
 
     // Tant qu'aucune échelle n'est choisie, aucune valeur n'est proposée (rien n'est deviné).
     expect(buttonByName(root, '10/10')).toBeNull()
-    await choose(root, 'Acuité de loin : échelle utilisée', SCALE_TENTHS)
+    await choice(root, 'Acuité de loin : échelle utilisée', 'Dixièmes (X/10)')
     expect(textOf(root)).toContain('touchez une valeur pour remplir sans correction, OD')
 
     await click(buttonByName(root, '10/10'))
@@ -371,7 +372,8 @@ describe('étape 3 : valeurs usuelles de l’acuité', () => {
     const { root, unmount } = await openConsultation()
     await goToStep(root, 3)
 
-    expect(hasField(root, 'Acuité de loin : échelle utilisée')).toBe(false)
+    expect(textOf(root)).not.toContain('Acuité de loin : échelle utilisée')
+    expect(root.querySelectorAll('input[type="radio"]')).toHaveLength(0)
     expect(textOf(root)).toContain('Échelle utilisée : Dixièmes (X/10) — DÉMONSTRATION')
     await type(root, 'Acuité de loin, sans correction, OD', '8/10')
     await click(buttonByName(root, 'Enregistrer'))

@@ -151,7 +151,7 @@ export const PAGES_CONSULTATIONS: readonly PageHelp[] = [
     module: 'consultations',
     anyPermission: ['clinical.read'],
     purpose:
-      'Vous remplissez ici l’examen de vue d’un patient, en sept étapes : du motif de la visite à la conclusion. L’en-tête rappelle le patient et le dossier. Vous enregistrez étape par étape, terminez l’examen, puis le corrigez au besoin par une révision.',
+      'Vous remplissez ici l’examen de vue d’un patient, en sept étapes : du motif de la visite à la conclusion. L’en-tête rappelle le patient, son dossier et sa profession. Vous enregistrez étape par étape, terminez l’examen, puis le corrigez au besoin par une révision.',
     actions: [
       {
         label: 'Précédent',
@@ -287,7 +287,7 @@ export const PAGES_CONSULTATIONS: readonly PageHelp[] = [
       'Les médicaments se saisissent librement : aucune base de médicaments, aucune posologie complétée. « Monter » et « Descendre » règlent l’ordre de l’ordonnance. Prescrire ne crée ni vente ni mouvement de stock.',
       'Sous l’examen, le bloc « Contrôle recommandé » permet de « Programmer un contrôle ». Il n’apparaît que si l’agenda est ouvert pour votre compte.',
       'Quitter l’écran avec une saisie en attente demande confirmation : « Des saisies ne sont pas encore enregistrées. Quitter cet écran sans les enregistrer ? » L’examen s’ouvre toujours à l’étape 1.',
-      'Une fois l’examen terminé, « Créer une facture » (pour les comptes qui facturent) ouvre la facture avec le patient et la visite déjà choisis. Sans droit de saisie, l’écran affiche « Lecture seule » : seule la navigation entre les étapes fonctionne.',
+      'Pendant l’examen, le bloc « Prescription optique » ouvre la prescription de lunettes. Une fois l’examen terminé, « Transmettre à la caisse » (comptes qui facturent) ouvre la facture avec le patient et la visite déjà choisis ; les autres lisent où la caisse la crée. Sans droit de saisie, l’écran affiche « Lecture seule » : seule la navigation entre les étapes fonctionne.',
     ],
     problems: [
       {

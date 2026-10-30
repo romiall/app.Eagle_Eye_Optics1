@@ -1,4 +1,4 @@
-import { expect, test, type BrowserContext, type Page } from '@playwright/test'
+import { expect, test, type Page } from '@playwright/test'
 
 import { demoAccount } from './support/accounts'
 
@@ -19,19 +19,27 @@ async function signIn(page: Page, role: string): Promise<void> {
   await expect(page.getByRole('heading', { level: 1, name: /^Bonjour / })).toBeVisible()
 }
 
-/** Change de compte sans autre état partagé : cookies effacés, puis connexion du profil demandé. */
-async function switchTo(page: Page, context: BrowserContext, role: string): Promise<void> {
-  // Quitter la page d'abord : une requête encore en vol ne doit pas recréer le cookie de session après son effacement.
-  await page.goto('about:blank')
-  await context.clearCookies()
-  await page.goto('/connexion')
+/**
+ * Change de compte : déconnexion par l'écran, puis connexion du profil demandé. Effacer les cookies ne suffit pas :
+ * la réponse tardive d'une requête encore en vol (serveur de test mono-processus, poste chargé) ré-émet le cookie de
+ * session, alors que la déconnexion détruit la session côté serveur.
+ */
+async function switchTo(page: Page, role: string): Promise<void> {
+  await page.getByRole('button', { name: 'Se déconnecter' }).click()
+  await expect(page).toHaveURL(/\/connexion$/)
   await signIn(page, role)
 }
 
-async function createPatient(page: Page, lastName: string, phone: string): Promise<void> {
+async function createPatient(
+  page: Page,
+  lastName: string,
+  phone: string,
+  profession = '',
+): Promise<void> {
   await page.goto('/patients/nouveau')
   await page.getByLabel('Nom (obligatoire)').fill(lastName)
   await page.getByLabel('Prénom(s)').fill('Test')
+  if (profession !== '') await page.getByLabel('Profession').fill(profession)
   await page.getByLabel('Sexe').selectOption({ label: 'Féminin' })
   await page.getByLabel('Date de naissance', { exact: true }).fill('12/09/1990')
   await page.getByLabel('Téléphone principal').fill(phone)
@@ -63,18 +71,23 @@ function stepper(page: Page) {
 test.describe('nouvelle consultation (C01) sur la vraie application', () => {
   test('un clic pour un patient de la file ; arrivée puis examen pour un patient trouvé ; écart pupillaire enregistré avec la réfraction', async ({
     page,
-    context,
   }) => {
     test.setTimeout(240_000)
     await signIn(page, 'RECEPTION')
-    await createPatient(page, 'Nouvelle File', '+237 600 00 12 01')
+    await createPatient(page, 'Nouvelle File', '+237 600 00 12 01', 'Enseignante')
     await registerArrivalFromRecord(page, 'Nouvelle File')
     await createPatient(page, 'Nouvelle Recherche', '+237 600 00 12 02')
 
-    await switchTo(page, context, 'CLINICIAN')
+    await switchTo(page, 'CLINICIAN')
 
     // L'accueil du professionnel propose « Nouvelle consultation » ; elle ouvre la boîte sur l'écran des examens.
-    await page.getByRole('main').getByRole('link', { name: 'Nouvelle consultation' }).click()
+    await expect(
+      page.getByRole('main').getByRole('link', { name: 'Nouvelle consultation' }),
+    ).toHaveCount(2)
+    await page
+      .getByRole('navigation', { name: 'Actions' })
+      .getByRole('link', { name: 'Nouvelle consultation' })
+      .click()
     await expect(page).toHaveURL(/\/consultations\?nouvelle=1$/)
     const dialog = page.getByRole('dialog', { name: 'Nouvelle consultation' })
     await expect(dialog).toBeVisible()
@@ -83,6 +96,9 @@ test.describe('nouvelle consultation (C01) sur la vraie application', () => {
     await dialog.getByRole('button', { name: /Démarrer l’examen de .*Nouvelle File/ }).click()
     await expect(page).toHaveURL(/\/consultations\/[0-9A-HJKMNP-TV-Z]{26}$/)
     await expect(page.getByRole('main')).toContainText('Nouvelle File')
+    await expect(page.getByRole('group', { name: 'Patient et consultation' })).toContainText(
+      'Profession : Enseignante',
+    )
     await expect(page.getByRole('heading', { level: 2, name: /Étape 1 sur 7/ })).toBeVisible()
 
     // Symptômes courants : les boutons complètent le texte libre sans l'écraser.
@@ -120,6 +136,9 @@ test.describe('nouvelle consultation (C01) sur la vraie application', () => {
       .click()
     await expect(page.getByLabel('Écart pupillaire total (mm)')).toHaveValue(/^72[,.]00$/)
     await expect(page.locator('[id="mesure-AUTOREFRACTOR-OD-sphere"]')).toHaveValue('-1,25')
+
+    // Pendant l'examen, un bloc mène à la prescription optique (écran à part, utilisable dès l'examen en cours).
+    await expect(page.getByRole('link', { name: 'Prescription optique' })).toBeVisible()
 
     // Un patient sans arrivée : recherché, son arrivée est enregistrée puis l'examen démarre.
     await page.goto('/consultations')

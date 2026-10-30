@@ -11,7 +11,7 @@ import { vi, type Mock } from 'vitest'
 import type {
   ClinicalRevisionDetail,
   Consultation,
-  ConsultationPatient,
+  ConsultationHeaderPatient,
   MeResponse,
   Patient,
   Prescription,
@@ -134,7 +134,7 @@ export function consultation(
 }
 
 /** Identité de base rendue avec la consultation (en-tête), tirée de la fiche fictive. */
-export function patientSummary(source: Patient = basePatient()): ConsultationPatient {
+export function patientSummary(source: Patient = basePatient()): ConsultationHeaderPatient {
   return {
     id: source.id,
     record_number: source.record_number,
@@ -142,6 +142,7 @@ export function patientSummary(source: Patient = basePatient()): ConsultationPat
     first_names: source.first_names,
     sex: source.sex,
     birth_date: source.birth_date,
+    profession: source.profession,
   }
 }
 

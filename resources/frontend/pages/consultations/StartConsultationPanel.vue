@@ -17,7 +17,7 @@
  * n'est alors pas établie (doublon possible). Le contenu est monté à l'ouverture de la boîte : la file est
  * relue à chaque ouverture. Identité administrative seulement : aucune donnée clinique.
  */
-import { computed, ref, shallowRef } from 'vue'
+import { computed, nextTick, ref, shallowRef } from 'vue'
 import { RouterLink } from 'vue-router'
 
 import { ApiError } from '@/app/api'
@@ -113,6 +113,7 @@ const selected = shallowRef<PatientSummary | null>(null)
 /** Résultats connus par identifiant : le composant de choix ne rend que la valeur de l'option. */
 const known = new Map<string, PatientSummary>()
 const searchForbidden = ref(false)
+const resultCard = ref<HTMLElement | null>(null)
 
 function optionOf(patient: PatientSummary): ComboboxOption {
   const parts = [
@@ -226,6 +227,10 @@ function onSelect(option: ComboboxOption | null): void {
   clockProblem.value = false
   // Une autre fiche, une autre arrivée : clé et identifiant de visite repartent à neuf.
   if (arrival.state.value !== 'saving') arrival.reset()
+  // Sur un petit écran, la fiche choisie et son bouton sont sous le champ : les ramener dans la boîte.
+  if (selected.value !== null) {
+    void nextTick(() => resultCard.value?.scrollIntoView?.({ block: 'nearest' }))
+  }
 }
 
 /** Visite portée par la réponse du serveur, ou null si la réponse n'a pas la forme d'une visite. */
@@ -341,7 +346,7 @@ async function registerAndStart(): Promise<void> {
             :last-name="visit.patient.last_name"
             :first-names="visit.patient.first_names"
           />
-          <p class="min-w-0 flex-1">
+          <p class="min-w-36 flex-1">
             <span class="block font-semibold break-words text-ink">{{ nameOf(visit) }}</span>
             <span class="block text-sm break-words text-muted"
               >Dossier {{ visit.patient.record_number }} · arrivé à
@@ -394,7 +399,11 @@ async function registerAndStart(): Promise<void> {
           @select="onSelect"
         />
 
-        <div v-if="selected" class="space-y-3 rounded-xl border border-line bg-canvas p-4">
+        <div
+          v-if="selected"
+          ref="resultCard"
+          class="space-y-3 rounded-xl border border-line bg-canvas p-4"
+        >
           <PatientIdentityHeader :patient="selected" avatar />
 
           <p

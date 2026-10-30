@@ -280,7 +280,7 @@ export const PAGES_ACCES: readonly PageHelp[] = [
           'Sous « Actions », cliquez sur la carte de votre tâche, par exemple « Nouveau patient », « Nouvelle consultation » ou « Rechercher ». Seules les cartes ouvertes à votre compte apparaissent.',
           'Plus bas, les raccourcis sont rangés par activité : « Accueil des patients », « Examens », « Caisse et ventes » et « Administration ».',
           'Sous « Accueil des patients » : « Patients à rappeler » et « Enregistrer une arrivée ».',
-          'Sous « Examens » : « Démarrer un examen », « Mes examens en cours » et « Examens du jour ».',
+          'Sous « Examens » : « Nouvelle consultation », « Mes examens en cours » et « Examens du jour ».',
           'Sous « Caisse et ventes » : « Caisse », « Nouvelle facture » et « Factures ».',
           'Sous « Administration » : « Personnel », « Cabinet et documents » et « Catalogue ».',
           'Une activité sans raccourci pour votre compte n’est pas affichée : avec les droits par défaut, la caissière ne voit ni « Examens » ni « Administration ».',

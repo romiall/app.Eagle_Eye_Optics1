@@ -288,7 +288,7 @@ d'examen éloigné de son carnet et du ticket de l'autoréfracteur. Aucune comma
 change : tout passe par `StartConsultation`, `RegisterVisit` et `SaveClinicalStep` existants.
 
 - **Entrées** : action d'accueil `new-consultation` (« Nouvelle consultation », `clinical.write`, module `consultations`,
-  adresse `/consultations?nouvelle=1`), raccourci `start-exam` (« Démarrer un examen », groupe « Examens ») et bouton du
+  adresse `/consultations?nouvelle=1`), raccourci `start-exam` (même libellé, groupe « Examens ») et bouton du
   même nom en tête de la liste des examens. L'adresse `?nouvelle=1` ouvre la boîte et se retire à sa fermeture.
 - **Boîte** (`StartConsultationDialog.vue`, montée à la demande ; contenu `StartConsultationPanel.vue`) : « Dans la
   file du jour » liste les visites d'examen ou de suivi en attente (arrivé, en attente du paiement, prêt) avec
@@ -303,20 +303,34 @@ change : tout passe par `StartConsultation`, `RegisterVisit` et `SaveClinicalSte
   centrage, envoie la réfraction puis le centrage (deux `SaveClinicalStep`, version rebasée entre les deux) quand SEUL
   `pdTotal` a changé (`pdOnlyDirty`) ; toute autre saisie du centrage reste à enregistrer depuis son étape.
   « Corriger l'examen » l'inclut comme n'importe quelle rubrique modifiée.
-- **Acuité** : `QuickChoices` propose sous chaque tableau les valeurs usuelles de l'échelle du groupe (échelles de
-  démonstration seulement, plus « CLD » et « VLMB » du carnet) ; un bouton remplit la dernière case touchée, sinon la
-  première case vide (sans correction OD, OG, puis avec correction), et la valeur prend l'échelle du groupe. Le serveur
-  exige toujours `scale_id` : quand le cabinet n'a qu'UNE échelle active elle s'applique d'office et son choix n'est
-  plus proposé ; avec plusieurs, le choix reste explicite (aucune échelle devinée).
+- **Acuité** : le choix de l'échelle de chaque groupe est une rangée de boutons radio (un par échelle active), plus
+  de menu déroulant. Le serveur exige toujours `scale_id` : quand le cabinet n'a qu'UNE échelle active elle s'applique
+  d'office et son choix n'est plus proposé ; avec plusieurs, le choix reste explicite (aucune échelle devinée) et une
+  valeur nouvelle prend l'échelle déjà choisie pour le groupe. `QuickChoices` propose sous chaque tableau les valeurs
+  usuelles de la FAMILLE de l'échelle (`acuityFamily`, reconnue au code ou au libellé, accents et casse ignorés :
+  `DIXIEME`, `DECIMAL` ou `X/10` ; `SNELLEN` ; `PARINAUD` ou `PRES`), puis « CLD » et « VLMB » du carnet pour les
+  dixièmes. Elles servent donc aussi aux échelles RÉELLES, par exemple
+  `eeo:clinical:scales --code DIXIEMES --label "Dixièmes (X/10)"` puis `--code PARINAUD --label "Vision de près
+  (Parinaud)"` ; une échelle d'une autre famille garde la saisie libre. Un bouton remplit la dernière case touchée,
+  sinon la première case vide (sans correction OD, OG, puis avec correction). Aides à la saisie seulement : aucune
+  conversion, aucune valeur appliquée seule, aucune échelle validée cliniquement (Q06 reste ouverte).
 - **Motif** : boutons de symptômes courants qui complètent le texte libre (`symptoms`), sans doublon ni écrasement.
-- **Examen terminé** : « Créer une facture » (patient et visite passés à `facture-nouvelle`) pour qui a
-  `invoice.create` ou `exam_fee.collect`, module `sales` ouvert. Un reçu naît de l'encaissement d'une facture : il n'y a
-  pas de « reçu direct » depuis l'examen.
-- **Écarts avec la demande** : la profession du patient n'est pas dans l'identité rendue avec la consultation
-  (`ConsultationPatient` : contrat serveur à étendre si la cliente la veut dans l'en-tête) ; antécédents et « Porte
-  actuellement des lunettes » avaient déjà leurs cases (étapes 1 et 2) ; les sept étapes sont conservées ; la
-  prescription optique reste l'écran propre qui suit la fin de l'examen.
+- **En-tête** : la profession du dossier administratif s'ajoute à la ligne de la date quand elle est connue
+  (`ConsultationHeaderPatient` du contrat `Consultation.patient`, lue par `ConsultationReader::patient` ; la liste des
+  examens, `ConsultationSummary`, ne la porte pas). Le snapshot d'une révision n'en retient pas la profession : son
+  empreinte ne change pas.
+- **Prescription optique** : un bloc de l'examen en cours mène à l'écran de prescription (le serveur n'exige pas que
+  l'examen soit terminé ; la copie de la réfraction reste un geste explicite). Terminé, le lien reste dans « Examen
+  terminé ».
+- **Caisse** : « Transmettre à la caisse » (examen terminé ; patient et visite passés à `facture-nouvelle`) pour qui a
+  `invoice.create` ou `exam_fee.collect`, module `sales` ouvert ; les autres comptes (le professionnel) lisent où la
+  caisse crée la facture (« Créer une facture » de la file du jour). Un reçu naît de l'encaissement d'une facture : il
+  n'y a pas de « reçu direct » depuis l'examen.
+- **Inchangé, volontairement** : antécédents (Traumatisme, Chirurgie, Glaucome, Cataracte, Diabète, Hypertension… déjà
+  en cases à cocher avec « Aucun connu » exclusif) et « Porte actuellement des lunettes » avec sa durée (étapes 1 et 2)
+  ; les sept étapes sont conservées (les rubriques restent celles du contrat et du dossier).
 - **Tests** : `tests/frontend/consultations/start-consultation.test.ts`, ajouts de `consultation-measures.test.ts` et
-  `consultation-page.test.ts`, `tests/frontend/shell/{navigation,home-shortcuts}.test.ts`,
+  `consultation-page.test.ts`, `tests/frontend/domain/acuity-scales.test.ts`,
+  `tests/frontend/shell/{navigation,home-shortcuts}.test.ts`, `tests/Feature/Clinical/GetConsultationTest.php`,
   `tests/e2e/consultation-nouvelle.spec.ts` (vraie application) et `shell.spec.ts`.
 

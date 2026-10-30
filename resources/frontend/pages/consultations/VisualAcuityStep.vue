@@ -8,15 +8,18 @@
  * L'échelle est choisie explicitement pour chaque groupe (loin, près, après correction) ; la valeur lue est
  * conservée telle que saisie (« 10/10 », « 6/6 », « P2 »). AUCUNE conversion entre échelles n'est faite : des
  * échelles différentes dans un même groupe sont signalées, leurs valeurs ne sont pas comparables. Les valeurs
- * usuelles proposées sont celles d'échelles de DÉMONSTRATION, non validées cliniquement ; la saisie libre reste
- * toujours possible.
+ * usuelles proposées (famille de l'échelle : dixièmes, Snellen, Parinaud) n'ont aucune valeur clinique : la saisie
+ * libre reste toujours possible.
+ *
+ * Choix direct, sans menu déroulant : une rangée de boutons radio, un par échelle active du cabinet, un seul geste.
+ * Quand le cabinet n'a qu'UNE échelle active, elle s'applique d'office et son choix n'est pas proposé (rien n'est
+ * deviné : il n'y en a pas d'autre).
  *
  * Saisie rapide, comme le carnet (sans correction puis avec correction, OD puis OG) : sous chaque tableau, les
  * valeurs usuelles de l'échelle du groupe sont des boutons qui remplissent la dernière case touchée, ou la
  * première case vide, puis passent à la suivante. Une valeur nouvelle prend l'échelle déjà choisie pour le
- * groupe ; quand le cabinet n'a qu'UNE échelle active, elle s'applique d'office et son choix n'est pas
- * proposé (rien n'est deviné : il n'y en a pas d'autre). Le formulaire est tenu par l'écran ; ce composant
- * affiche les erreurs reçues par identifiant de contrôle.
+ * groupe. Le formulaire est tenu par l'écran ; ce composant affiche les erreurs reçues par identifiant de
+ * contrôle.
  */
 import { computed, ref } from 'vue'
 
@@ -27,7 +30,6 @@ import OpticalTable, {
   type OpticalMeasures,
 } from '@/components/clinical/OpticalTable.vue'
 import QuickChoices from '@/components/clinical/QuickChoices.vue'
-import SelectField from '@/components/form/SelectField.vue'
 import {
   ACUITY_GROUPS,
   ACUITY_SLOTS,
@@ -130,9 +132,15 @@ function errorsOf(group: AcuityGroup): Record<string, string> {
   return result
 }
 
-function scaleCode(group: AcuityGroup): string | null {
+/** L'échelle (code et libellé) du groupe : de sa famille dépendent les valeurs usuelles proposées. */
+function usedScaleOf(group: AcuityGroup): VisualAcuityScale | null {
   const id = usedScale(group)
-  return props.scales.find((scale) => scale.id === id)?.code ?? null
+  return props.scales.find((scale) => scale.id === id) ?? null
+}
+
+function suggestionsOf(group: AcuityGroup): readonly string[] {
+  const scale = usedScaleOf(group)
+  return acuitySuggestions(scale?.code ?? null, scale?.label ?? '')
 }
 
 function listId(group: AcuityGroup): string {
@@ -163,7 +171,8 @@ function setValue(group: AcuityGroup, correction: string, eye: AcuityEye, value:
 // --- Valeurs usuelles en boutons -------------------------------------------------------------------
 
 function quickValues(group: AcuityGroup): readonly string[] {
-  return acuityQuickValues(scaleCode(group))
+  const scale = usedScaleOf(group)
+  return acuityQuickValues(scale?.code ?? null, scale?.label ?? '')
 }
 
 /** Cases remplies par les boutons, dans l'ordre du carnet : sans correction (OD, OG), puis avec correction. */
@@ -256,11 +265,7 @@ function valueOf(group: AcuityGroup, correction: string, eye: AcuityEye): string
       @focusin="trackFocus(group, $event)"
     >
       <datalist :id="listId(group)">
-        <option
-          v-for="suggestion in acuitySuggestions(scaleCode(group))"
-          :key="suggestion"
-          :value="suggestion"
-        />
+        <option v-for="suggestion in suggestionsOf(group)" :key="suggestion" :value="suggestion" />
       </datalist>
       <OpticalTable
         :caption="group.title"
@@ -274,20 +279,43 @@ function valueOf(group: AcuityGroup, correction: string, eye: AcuityEye): string
             Échelle utilisée :
             <strong class="font-semibold text-ink">{{ soleScale?.label }}</strong>
           </p>
-          <div v-else class="max-w-md">
-            <SelectField
-              :model-value="groupScale(model, group.key)"
-              :label="`${group.title} : échelle utilisée`"
-              :placeholder="
-                mixed.has(group.key) ? 'Plusieurs échelles : en choisir une' : 'Choisir l’échelle…'
-              "
-              :options="scaleOptions(group)"
-              :control-id="CONTROL_IDS.acuityScale(group.key)"
-              :error="props.errors[CONTROL_IDS.acuityScale(group.key)] ?? null"
-              :disabled="props.disabled || !props.scalesReady || props.scales.length === 0"
-              @update:model-value="chooseScale(group, $event)"
-            />
-          </div>
+          <!-- Choix direct de l'échelle : un bouton radio par échelle active, jamais un menu déroulant. -->
+          <fieldset
+            v-else-if="scaleOptions(group).length > 0"
+            :id="CONTROL_IDS.acuityScale(group.key)"
+            tabindex="-1"
+            class="min-w-0"
+          >
+            <legend class="mb-1.5 p-0 text-sm leading-5 font-semibold text-ink">
+              {{ group.title }} : échelle utilisée
+            </legend>
+            <div class="flex flex-wrap gap-2">
+              <label
+                v-for="option in scaleOptions(group)"
+                :key="option.value"
+                :for="`${CONTROL_IDS.acuityScale(group.key)}-${option.value}`"
+                class="flex min-h-11 items-center gap-2 rounded-lg border border-line bg-surface px-3 py-1 text-base text-ink hover:border-primary has-checked:border-gold has-checked:bg-primary-soft has-checked:font-medium has-disabled:cursor-not-allowed has-disabled:bg-disabled"
+              >
+                <input
+                  :id="`${CONTROL_IDS.acuityScale(group.key)}-${option.value}`"
+                  type="radio"
+                  :name="CONTROL_IDS.acuityScale(group.key)"
+                  class="size-6 shrink-0 accent-primary"
+                  :checked="groupScale(model, group.key) === option.value"
+                  :disabled="props.disabled || !props.scalesReady"
+                  @change="chooseScale(group, option.value)"
+                />
+                <span>{{ option.label }}</span>
+              </label>
+            </div>
+            <p
+              v-if="props.errors[CONTROL_IDS.acuityScale(group.key)]"
+              class="mt-1.5 flex items-start gap-1.5 text-sm leading-5 font-medium text-danger"
+            >
+              <span aria-hidden="true" class="shrink-0">⚠ </span
+              ><span>{{ props.errors[CONTROL_IDS.acuityScale(group.key)] }}</span>
+            </p>
+          </fieldset>
           <p
             v-if="mixed.has(group.key)"
             class="rounded-xl border border-warning bg-warning-soft p-3 text-sm font-medium text-ink"

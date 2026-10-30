@@ -829,6 +829,7 @@ SchemasResourcesClinicalJsonClinicalRevision?: ClinicalRevision
 SchemasResourcesClinicalJsonClinicalRevisionDetail?: ClinicalRevisionDetail
 SchemasResourcesClinicalJsonClinicalRevisionResponse?: ClinicalRevisionResponse
 SchemasResourcesClinicalJsonConsultationPatient?: ConsultationPatient
+SchemasResourcesClinicalJsonConsultationHeaderPatient?: ConsultationHeaderPatient
 SchemasResourcesClinicalJsonConsultation?: Consultation
 SchemasResourcesClinicalJsonConsultationSummary?: ConsultationSummary
 SchemasResourcesClinicalJsonConsultationSummaryPage?: ConsultationSummaryPage
@@ -8305,7 +8306,19 @@ sex: PatientRecordsSex
 birth_date: NullableCivilDate
 }
 /**
- * Consultation complète : professionnel et gérante seulement (clinical.read). patient : identité administrative de base, pour l’en-tête (sans dépendre du module Patients).
+ * Identité administrative de base du patient de la consultation ouverte, avec sa profession (donnée du dossier administratif que le cabinet note dans son carnet), pour l’en-tête de l’écran. La liste des examens (ConsultationSummary) ne porte pas la profession.
+ */
+export interface ConsultationHeaderPatient {
+id: Ulid
+record_number: string
+last_name: string
+first_names: (string | null)
+sex: PatientRecordsSex
+birth_date: NullableCivilDate
+profession: (string | null)
+}
+/**
+ * Consultation complète : professionnel et gérante seulement (clinical.read). patient : identité administrative de base et profession, pour l’en-tête (sans dépendre du module Patients).
  */
 export interface Consultation {
 id: Ulid
@@ -8319,7 +8332,7 @@ current_revision: number
 completed_at: NullableInstant
 finalization_missing_data_reason: (string | null)
 version: Version
-patient: ConsultationPatient
+patient: ConsultationHeaderPatient
 steps: AllSteps
 /**
  * @minItems 0

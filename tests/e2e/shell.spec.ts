@@ -55,7 +55,7 @@ test.describe('coquille de l’application (F09)', () => {
       'Paramètres',
       'Patients à rappeler',
       'Enregistrer une arrivée',
-      'Démarrer un examen',
+      'Nouvelle consultation',
       'Mes examens en cours',
       'Examens du jour',
       'Caisse',

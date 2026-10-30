@@ -22,7 +22,9 @@
  *   c'est l'écart total de l'étape « Centrage » ; « Enregistrer » ou « Suivant » sur la réfraction l'enregistre
  *   avec elle (deux commandes l'une après l'autre), sans repasser par le centrage.
  * - Examen terminé : lecture seule, avec l'historique des révisions, la correction motivée (`clinical.amend`) et
- *   « Créer une facture » (patient et visite déjà renseignés) pour qui peut facturer.
+ *   « Transmettre à la caisse » (la facture de l'examen, patient et visite déjà renseignés) pour qui peut facturer ;
+ *   les autres comptes lisent où la caisse crée la facture. Pendant l'examen, un bloc mène à la « Prescription
+ *   optique » (écran à part, utilisable dès l'examen en cours).
  * - Sans le droit d'écriture (clinical.write) : lecture seule, aucun bouton d'enregistrement.
  * - Hors ligne : « Consultation indisponible », jamais une consultation vide.
  * Une instance par consultation (l'écran la recrée quand l'adresse change).
@@ -138,13 +140,14 @@ const referral = computed(() => {
 const referred = computed(() => baseline.value?.steps.CONCLUSION.referral === true)
 
 /**
- * « Créer une facture » (B02) depuis l'examen terminé : droit invoice.create ou exam_fee.collect, module
- * « sales » ouvert. Le patient et la visite passent par leurs identifiants opaques (rien n'est ressaisi).
+ * « Transmettre à la caisse » (B02) depuis l'examen terminé : la facture de l'examen s'ouvre avec le patient et la
+ * visite déjà renseignés (identifiants opaques, rien n'est ressaisi). Droit invoice.create ou exam_fee.collect,
+ * module « sales » ouvert. Un compte sans ce droit (le professionnel) voit à la place où la caisse crée la facture :
+ * la file du jour. Aucun reçu n'est établi ici : il naît de l'encaissement d'une facture.
  */
+const salesOpen = computed(() => moduleOpenOnScreen('sales'))
 const canInvoice = computed(
-  () =>
-    (canOnScreen('invoice.create') || canOnScreen('exam_fee.collect')) &&
-    moduleOpenOnScreen('sales'),
+  () => (canOnScreen('invoice.create') || canOnScreen('exam_fee.collect')) && salesOpen.value,
 )
 const invoiceLink = computed(() =>
   baseline.value === null
@@ -282,6 +285,10 @@ function stepBadge(step: DeliveredStep): string {
         <p v-if="baseline.finalization_missing_data_reason" class="mt-2">
           Justification d’absence enregistrée : {{ baseline.finalization_missing_data_reason }}
         </p>
+        <p v-if="salesOpen && !canInvoice" class="mt-2">
+          Le patient peut passer à la caisse : la facture se crée depuis « Aujourd’hui », avec «
+          Créer une facture ».
+        </p>
         <template #action>
           <div class="flex flex-wrap gap-3">
             <LinkButton
@@ -298,8 +305,8 @@ function stepBadge(step: DeliveredStep): string {
               v-if="canInvoice && invoiceLink"
               :to="invoiceLink"
               variant="secondary"
-              :accessible-name="`Créer une facture pour ${baseline.patient.last_name}`"
-              >Créer une facture</LinkButton
+              :accessible-name="`Transmettre à la caisse : créer la facture de ${baseline.patient.last_name}`"
+              >Transmettre à la caisse</LinkButton
             >
             <AppButton v-if="canAmend" variant="primary" :disabled="busy" @click="editor.startAmend"
               >Corriger l’examen</AppButton
@@ -590,6 +597,27 @@ function stepBadge(step: DeliveredStep): string {
                 </div>
               </div>
             </form>
+
+            <!-- La prescription de lunettes est un écran à part (brouillon, puis version validée) : accessible dès l'examen en cours. -->
+            <SectionCard
+              v-if="!completed && !amending"
+              title="Prescription optique"
+              title-id="titre-prescription"
+              icon="glasses"
+            >
+              <p class="max-w-prose text-base text-ink">
+                Une fois la réfraction enregistrée, établissez la prescription de lunettes : verres
+                de chaque œil, type de verre et traitements, puis version validée. Elle ne copie
+                jamais la réfraction d’elle-même. Enregistrez d’abord les étapes modifiées.
+              </p>
+              <div class="mt-4">
+                <LinkButton
+                  :to="{ name: 'consultation-prescriptions', params: { id: props.consultationId } }"
+                  variant="secondary"
+                  >Prescription optique</LinkButton
+                >
+              </div>
+            </SectionCard>
 
             <SectionCard
               v-if="canFinish"

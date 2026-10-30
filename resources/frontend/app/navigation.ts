@@ -291,7 +291,8 @@ export const WORK_SHORTCUTS: readonly WorkShortcut[] = [
   },
   {
     id: 'start-exam',
-    label: 'Démarrer un examen',
+    // Même libellé que l'action d'accueil « Nouvelle consultation » : même geste, retrouvé avec les autres examens.
+    label: 'Nouvelle consultation',
     path: '/consultations?nouvelle=1',
     permissions: ['clinical.write'],
     deliveredBy: 'C01',

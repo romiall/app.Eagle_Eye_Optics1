@@ -351,6 +351,7 @@ export const TOPICS_PARCOURS_CLINIQUE: readonly HandbookTopic[] = [
           'Une fois les étapes enregistrées, cliquez sur « Terminer l’examen ». La fenêtre liste les « Rubriques non renseignées ».',
           'S’il manque le motif ou les plaintes, ou la conclusion, la « Justification d’absence » devient obligatoire.',
           'Confirmez : « Examen terminé » s’affiche, la révision 1 est figée et la visite passe « Terminé ».',
+          'Pour le règlement, cliquez sur « Transmettre à la caisse » (comptes qui facturent) : la facture s’ouvre avec le patient et la visite déjà choisis. Sinon, la caissière clique sur « Créer une facture » depuis « Aujourd’hui ».',
         ],
       },
       {

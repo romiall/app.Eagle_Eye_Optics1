@@ -161,7 +161,7 @@ export const TOPICS_GUIDES_PROFILS: readonly HandbookTopic[] = [
         title: 'Ce que vous voyez',
         items: [
           'Menu, selon les écrans ouverts au cabinet : « Accueil », « Aujourd’hui », « Patients », « Consultations » et « Agenda ». Ni « Ventes et caisse », ni « Paramètres ».',
-          'Sur la page d’accueil, sous « Examens » : « Démarrer un examen », « Mes examens en cours » et « Examens du jour ». Dans un dossier patient, vous lisez les onglets « Identité », « Activité » et « Prescriptions » sans pouvoir modifier la fiche.',
+          'Sur la page d’accueil, sous « Examens » : « Nouvelle consultation », « Mes examens en cours » et « Examens du jour ». Dans un dossier patient, vous lisez les onglets « Identité », « Activité » et « Prescriptions » sans pouvoir modifier la fiche.',
         ],
       },
       {

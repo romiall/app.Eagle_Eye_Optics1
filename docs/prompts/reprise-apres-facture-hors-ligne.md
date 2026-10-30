@@ -1,6 +1,6 @@
 # Prompt de reprise après le chantier « facture sur le poste » (2026-10-30)
 
-Remplace `reprise-apres-deverrouillage.md` (obsolète). À coller dans une NOUVELLE discussion Claude Code ouverte sur le dossier local du projet (poste Windows).
+OBSOLÈTE depuis le 2026-10-30 : voir `reprise-apres-annuaire.md`. Remplaçait `reprise-apres-deverrouillage.md`. À coller dans une NOUVELLE discussion Claude Code ouverte sur le dossier local du projet (poste Windows).
 
 ```text
 Tu reprends, sur ma machine locale (Claude Code, poste Windows), le développement de l'application Eagle's Eye Optics Medical (cabinet d'optique : patients, consultations, ventes, caisse, stock). Réponds en français. Lis d'abord CLAUDE.md, puis va droit aux fichiers cités ci-dessous : ne relis pas tout le dépôt.

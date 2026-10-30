@@ -607,5 +607,6 @@ Détail : `docs/implementation/vault.md`, « Implémentation (A2) » ; preuve : 
 - **Incident de parcours** : un serveur d'aperçu d'une autre session occupait le port dérivé (8130) : les ports e2e se décalent avec
   `EEO_E2E_PORT`.
 - **Limites** : couverture de l'annuaire non affichée, factures du serveur (résumés seulement), déchiffrement sans worker ; voir vault.md.
+- **Arbitrage** : le demandeur a passé G1 à DONE le 2026-10-30 (écarts 1 et 2 levés ; CI verte : run 41039143341 sur `0ea7668`).
 - **À faire ensuite** : afficher la fraîcheur et la couverture de l'annuaire ; « Factures de ce patient » (résumés du pull) ; O06 (mises à jour
   PWA) puis G2.

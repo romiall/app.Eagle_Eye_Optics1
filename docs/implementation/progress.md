@@ -50,7 +50,7 @@ technique : `clinical.md`, « Modifier et supprimer un examen » ; droits : `acc
 ## Chantier « CRUD des écrans », tranches 2 et 3a : inventaire, brouillons et annulation (2026-10-30)
 
 Branche `claude/crud-ecrans-suite`, empilée sur `claude/crud-ecrans`. La tranche 1 a été mise en ligne le 2026-10-30 à la demande
-du demandeur (release `eeo-20261030T1628Z-6d1b2bb`, CI verte run 41079465699).
+du demandeur (release `eeo-20261030T1628Z-6d1b2bb`, CI verte run 41079465699). Tranches 2 et 3a : CI verte, run 41106310621 sur `2f195fb` ; PHPUnit complet 2 491 OK ; pas encore en ligne.
 
 - **Tranche 2** : `docs/implementation/crud.md`, matrice entité par entité (créer, lire, modifier, supprimer ou équivalent),
   ce qui existe côté serveur et écran, règle de suppression retenue et justifiée par les sources, décisions proposées pour la
@@ -64,10 +64,10 @@ du demandeur (release `eeo-20261030T1628Z-6d1b2bb`, CI verte run 41079465699).
   clinique, pierre tombale `ARCHIVED`, rejeu idempotent. Écrans : « Supprimer le brouillon » (prescription d'une consultation,
   ordonnances externes, devis), « Annuler le contrôle » (panneau de la consultation, patients à revoir). Aide intégrée à jour.
   Détail : `clinical.md`, `billing.md`, `agenda.md`, `access.md`.
-- **Reste (3b)** : archivage du patient (`ArchivePatient`, `RestorePatient`), question d'affaires posée au demandeur avec sa
-  recommandation (gérante, motif, réversible, garde-fous de la fusion).
+- **3b écartée (2026-10-30)** : le demandeur répond « Non, fusion seule » à l'archivage du patient (`ArchivePatient`, `RestorePatient`), proposé avec sa
+  recommandation (gérante, motif, réversible, garde-fous de la fusion). Rien n'est écrit : la fusion des doublons (`MergePatients`) reste le seul moyen de retirer une fiche, qui n'est jamais supprimée.
 - **Leçon d'outillage** : un MySQL de test arrêté fait SAUTER les tests PHPUnit (« Skipped ») au lieu d'échouer quand
-  `EEO_REQUIRE_MYSQL` n'est pas posé : toujours lire la ligne « Skipped » du résumé, ou poser `EEO_REQUIRE_MYSQL=1`.
+  `EEO_REQUIRE_MYSQL` n'est pas posé : toujours lire la ligne « Skipped » du résumé, ou poser `EEO_REQUIRE_MYSQL=1`. Une nouvelle route se déclare aussi dans la matrice de `BillingRoutesGateTest` (ventes) : rejouer la suite PHPUnit COMPLÈTE avant de pousser (le premier run CI de la 3a était rouge pour cette ligne manquante, corrigée par `2f195fb`).
 
 ## Priorité du demandeur (2026-10-22), réestimation et écarts de planning
 

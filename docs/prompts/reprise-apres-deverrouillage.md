@@ -1,6 +1,6 @@
 # Prompt de reprise après le chantier « déverrouillage public hors ligne » (2026-10-28)
 
-Remplace `reprise-apres-g1-ci-verte.md` (obsolète). À coller dans une NOUVELLE discussion Claude Code ouverte sur le dossier local du projet (poste Windows).
+OBSOLÈTE depuis le 2026-10-30 : voir `reprise-apres-facture-hors-ligne.md`. Remplaçait `reprise-apres-g1-ci-verte.md`. À coller dans une NOUVELLE discussion Claude Code ouverte sur le dossier local du projet (poste Windows).
 
 ```text
 Tu reprends, sur ma machine locale (Claude Code, poste Windows), le développement de l'application Eagle's Eye Optics Medical (cabinet d'optique : patients, consultations, ventes, caisse, stock). Réponds en français. Lis d'abord CLAUDE.md, puis va droit aux fichiers cités ci-dessous : ne relis pas le dépôt.

@@ -199,8 +199,10 @@ function query<T extends Element>(selector: string, root: ParentNode = document)
 }
 
 const squash = (text: string | null | undefined): string => (text ?? '').replace(/\s+/g, ' ').trim()
-const panel = (): HTMLDialogElement => query<HTMLDialogElement>('dialog')
-const isOpen = (): boolean => panel().hasAttribute('open')
+const PANEL = 'dialog[data-help-panel]'
+const panel = (): HTMLDialogElement => query<HTMLDialogElement>(PANEL)
+/** Le panneau n'existe qu'après la première demande : fermé = absent, ou présent sans l'attribut `open`. */
+const isOpen = (): boolean => document.querySelector(PANEL)?.hasAttribute('open') ?? false
 const panelText = (): string => squash(panel().textContent)
 const panelTitle = (): string => squash(query('h2', panel()).textContent)
 const headings = (): string[] =>
@@ -274,7 +276,8 @@ describe('le bouton « Aide » de l’en-tête', () => {
     await mountLauncher()
 
     expect(isOpen()).toBe(false)
-    expect(panel().querySelector('*')).toBeNull()
+    // Aucune boîte dans le document : un écran qui cherche la sienne ne tombe jamais sur celle de l'en-tête.
+    expect(document.querySelector('dialog')).toBeNull()
     expect(document.body.textContent).not.toContain('Vous êtes ici')
     expect(document.body.textContent).not.toContain('Chargement')
     expect(loader.loadPageHelp).not.toHaveBeenCalled()

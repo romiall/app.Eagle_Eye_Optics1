@@ -213,7 +213,10 @@ describe('amorçage de la coquille Vue', () => {
     expect(brand?.getAttribute('href')).toBe('/')
     expect(brand?.textContent).toContain('(accueil)')
     expect(root.querySelector('header')?.textContent).toContain('Gérante Fictive')
-    expect(root.querySelector('header button')?.textContent?.trim()).toBe('Se déconnecter')
+    const headerButtons = [...root.querySelectorAll('header button')].map((button) =>
+      button.textContent?.trim(),
+    )
+    expect(headerButtons).toEqual(['Aide', 'Se déconnecter'])
 
     unmount()
   })

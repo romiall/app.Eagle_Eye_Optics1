@@ -54,6 +54,12 @@ const title = ref<HTMLElement | null>(null)
 const searchField = ref<HTMLInputElement | null>(null)
 
 const open = ref(false)
+/**
+ * Le `<dialog>` n'existe dans la page qu'après la première demande d'aide : un écran qui cherche « sa » boîte de
+ * dialogue (confirmation d'un doublon, fin d'un examen) ne tombe jamais sur celle de l'en-tête, qui précède le
+ * contenu dans le document.
+ */
+const mounted = ref(false)
 const status = ref<LoadStatus>('idle')
 const pages = shallowRef<Pages | null>(null)
 const query = ref('')
@@ -103,10 +109,14 @@ function focusedElement(): HTMLElement | null {
   return active instanceof HTMLElement && active !== document.body ? active : null
 }
 
-function show(origin: HTMLElement | null): void {
+async function show(origin: HTMLElement | null): Promise<void> {
+  opener = origin ?? triggerElement()
+  if (!mounted.value) {
+    mounted.value = true
+    await nextTick()
+  }
   const element = dialog.value
   if (element === null) return
-  opener = origin ?? triggerElement()
   query.value = ''
   searchError.value = null
   open.value = true
@@ -143,7 +153,7 @@ function hide(): void {
 
 function toggle(origin: HTMLElement | null): void {
   if (open.value) hide()
-  else show(origin)
+  else void show(origin)
 }
 
 function onTriggerClick(): void {
@@ -238,7 +248,9 @@ async function submitSearch(): Promise<void> {
     ><AppIcon name="help" :size="18" />Aide</AppButton
   >
   <dialog
+    v-if="mounted"
     ref="dialog"
+    data-help-panel
     :aria-labelledby="labelId"
     tabindex="-1"
     class="fixed inset-y-0 right-0 left-auto m-0 h-dvh max-h-none w-[34rem] max-w-full overflow-hidden bg-surface p-0 text-ink shadow-raised backdrop:bg-ink/40"

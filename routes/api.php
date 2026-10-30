@@ -528,6 +528,12 @@ Route::prefix('v1')->group(function (): void {
                 ->middleware(['can:clinical.amend', 'can:clinical.read'])
                 ->whereUlid('id')
                 ->name('api.consultations.amend');
+            // Suppression d'un examen resté brouillon (demande du cabinet) : le serveur refuse tout autre état ; l'auteur
+            // ou la gérante seulement (contrôlé par l'action). Commande en ligne, POST comme l'annulation d'une visite.
+            Route::post('consultations/{id}/delete', [ConsultationController::class, 'delete'])
+                ->middleware(['can:clinical.write', 'can:clinical.read'])
+                ->whereUlid('id')
+                ->name('api.consultations.delete');
             Route::get('consultations/{id}/revisions/{revision_no}', [ConsultationController::class, 'revision'])
                 ->middleware(['can:clinical.read', 'throttle:eeo-consultation-read'])
                 ->whereUlid('id')

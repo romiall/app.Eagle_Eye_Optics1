@@ -24,6 +24,7 @@ après la réponse du serveur seulement.
 | `PATCH /api/v1/consultations/{id}/steps/{step}` | `clinical.write`, `clinical.read` | 200 `ConsultationResponse` (`SaveClinicalStep`) |
 | `POST /api/v1/consultations/{id}/complete` | `clinical.complete`, `clinical.read` | 200 `ConsultationResponse` (`CompleteConsultation`) |
 | `POST /api/v1/consultations/{id}/amendments` | `clinical.amend`, `clinical.read` | 201 `ConsultationResponse` (`AmendConsultation`) |
+| `POST /api/v1/consultations/{id}/delete` | `clinical.write`, `clinical.read` (+ auteur ou `approval.decide`) | 200 `DeleteConsultationDraftResponse` (`DeleteConsultationDraft`, brouillon seulement, en ligne seulement) |
 | `GET /api/v1/consultations/{id}/revisions/{revision_no}` | `clinical.read` · débit limité | 200 `ClinicalRevisionResponse` (snapshot figé) |
 | `GET /api/v1/consultations/{id}/prescriptions` | `clinical.read` · débit limité | 200 `PrescriptionList` (plus récente d'abord) |
 | `POST /api/v1/consultations/{id}/prescriptions` | `clinical.write`, `clinical.read` | 201 `PrescriptionResponse` (`CreatePrescription`, origine interne) |
@@ -333,4 +334,62 @@ change : tout passe par `StartConsultation`, `RegisterVisit` et `SaveClinicalSte
   `consultation-page.test.ts`, `tests/frontend/domain/acuity-scales.test.ts`,
   `tests/frontend/shell/{navigation,home-shortcuts}.test.ts`, `tests/Feature/Clinical/GetConsultationTest.php`,
   `tests/e2e/consultation-nouvelle.spec.ts` (vraie application) et `shell.spec.ts`.
+
+## Modifier et supprimer un examen (2026-10-30, chantier « CRUD des écrans », tranche 1)
+
+Demande du cabinet, après avoir créé un examen de test resté en brouillon que rien ne permettait de retirer : « on
+supprime une consultation quand elle est encore en brouillon, uniquement en brouillon pour l'instant ». Première tranche
+du chantier qui généralise modifier / supprimer (ou archiver, annuler) aux autres écrans ; l'inventaire entité par entité
+est celui des tranches suivantes.
+
+- **États** (`consultations.status`) : `DRAFT` (démarré, AUCUNE rubrique enregistrée : l'écran dit « Brouillon »),
+  `IN_PROGRESS` (au moins une rubrique, « En cours »), `COMPLETED` (révision 1 figée, « Terminé »). Seul `DRAFT` se
+  supprime : un brouillon ne porte aucune valeur clinique (seulement visite, patient, professionnel, date). Un examen
+  en cours se poursuit ; un examen terminé se corrige par `AmendConsultation` (nouvelle révision motivée, les précédentes
+  restent lisibles), jamais par une suppression ni un écrasement. Étendre la suppression aux examens « en cours » est un
+  choix du cabinet (il détruirait des rubriques saisies, non validées) : non fait.
+- **Commande** `DeleteConsultationDraft` (`DeleteConsultationDraftHandler`, route `POST /consultations/{id}/delete`,
+  corps `schemas/requests/http.json#/$defs/DeleteConsultationDraftRequest` = `consultation_id` + `expected_version`,
+  réponse `DeleteConsultationDraftResponse`). EN LIGNE seulement, comme le démarrage d'un examen (hors catalogue F06,
+  comme `UpdatePrescriptionDraft` et `CancelVisit`) : une source de poste ou de tâche est refusée (403
+  `ACTION_FORBIDDEN`). Verrous : cabinet, idempotence, visite (46), consultation (47). Pas de route `DELETE` : le projet
+  n'en a aucune, toute écriture est un `POST`/`PATCH` avec version attendue et `Idempotency-Key`.
+- **Qui** : `clinical.write` (et `clinical.read`, comme toute écriture clinique) ET le professionnel qui a démarré
+  l'examen (`consultations.clinician_id`) OU la gérante (`approval.decide`, même notion que « modifier le brouillon d'un
+  autre compte » de la facturation, `ActorRights::manager`). Aucune permission nouvelle (le référentiel reste de 49
+  codes) : l'auteur, la gérante, rien d'autre. Un autre professionnel : 403 `ACTION_FORBIDDEN`. Accueil et caisse : 403
+  (aucun `clinical.*`).
+- **Refus** (aucun effet) : examen introuvable, déjà supprimé ou d'un autre cabinet : 404 ; examen en cours ou terminé :
+  409 `STATE_TRANSITION_REFUSED` avec `details.current_status` ; version périmée : 409 `VERSION_CONFLICT` avec
+  `details.current_version` ; visite qui n'est plus « en consultation », rubrique ou révision déjà enregistrée, contrôle
+  recommandé programmé, prescription VALIDÉE ou déjà utilisée par une ligne de facture, une commande d'atelier ou un
+  document : 409 `STATE_TRANSITION_REFUSED`. Rien n'est supprimé en cascade au-delà de ce qui est du brouillon.
+- **Ce que la suppression défait**, dans la même transaction : l'examen ; ses prescriptions BROUILLON avec leurs yeux et
+  traitements (les déclencheurs de la base n'interdisent que les prescriptions validées) ; la visite revient à son état
+  d'avant (`ARRIVED` quand le paiement de l'examen n'est pas contrôlé, valeur par défaut ; avec `EEO_EXAM_FEE_CONTROL=billed`
+  : `READY_FOR_EXAM` si une facture de frais est réglée, `AWAITING_EXAM_FEE` sinon, et la dispense de la gérante consommée
+  par l'examen supprimé est retirée de la visite : l'approbation reste `CONSUMED`, une nouvelle dispense est nécessaire).
+  La file du jour reste cohérente et l'examen peut être redémarré (une seule consultation par visite). Les factures de la
+  visite (brouillon ou émise) ne sont PAS touchées : aucune clé ne les relie à la consultation.
+- **Traces** : audit `consultation.deleted` (qui, quand, quelle consultation ; `sanitized_diff` : visite, patient,
+  professionnel, statut et version avant, nombre de prescriptions brouillon supprimées, statut de visite rétabli ; aucune
+  valeur clinique), append-only. Journal des changements : la visite `UPDATED`, la consultation `ARCHIVED` (pierre
+  tombale à `version + 1` : « jamais de suppression, une entité retirée est archivée »). Hors ligne : les consultations
+  sont publiées au pull sans contenu (`PullProjections`, limite L0) et ne se démarrent pas sur un poste : aucune
+  projection ni commande locale n'est à défaire, le contrat du pull ne change pas.
+- **Contrat** : `ConsultationSummary` (liste) porte désormais `version` (la version attendue par la suppression) ; aucune
+  autre ressource ne change. Générés par `contracts/tools/build_resources.py` et `build_openapi.py`, puis
+  `npm run contracts:types`, relus par `--check`.
+- **Écrans** : liste des examens — chaque carte offre « Modifier » (ouvre l'examen ; un examen terminé s'ouvre en
+  correction avec `?corriger=1`, nouvelle révision motivée, avec `clinical.amend`) et « Supprimer » (brouillon seulement,
+  pour l'auteur ou la gérante) ; une seule boîte `DeleteConsultationDialog` pour toute la liste, message du résultat
+  (`StateMessage`). Éditeur — « Supprimer le brouillon » en tête de page pour un brouillon (puis retour à la liste avec le
+  message, via `flash.ts` en mémoire) ; un examen en cours ou terminé ne l'offre jamais (terminé : « Corriger l'examen »).
+  Les règles d'affichage sont dans `domain/clinical/draftDeletion.ts` ; le serveur refait tous les contrôles.
+- **Tests** : `tests/Feature/Clinical/DeleteConsultationDraftTest.php` (22 cas : règles, auteur et gérante, refus, audit,
+  pierre tombale, rejeu, isolation) et deux cas de `BilledExamFeeControlTest`, `tests/frontend/domain/draft-deletion.test.ts`,
+  `tests/frontend/consultations/consultation-delete.test.ts`, `tests/e2e/consultation-suppression.spec.ts` (vraie
+  application : suppression, redémarrage, refus d'un examen en cours et d'un examen terminé, captures 1366 et 360 px).
+  Jeu de contrats : `contracts/fixtures/resources/consultation-summary-page.*.json` portent `version`.
+- **Aide intégrée** : `domain/help/content/pages-consultations.ts` (écrans « Consultations » et « Consultation »).
 

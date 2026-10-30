@@ -46,6 +46,18 @@ export const PAGES_CONSULTATIONS: readonly PageHelp[] = [
         effect: 'Sur la carte d’un examen terminé, ouvre ses révisions et leur comparaison.',
       },
       {
+        label: 'Modifier',
+        effect:
+          'Sur la carte d’un examen, l’ouvre pour le poursuivre ; un examen terminé s’ouvre en correction : une nouvelle révision, rien n’est écrasé.',
+        anyPermission: ['clinical.write', 'clinical.amend'],
+      },
+      {
+        label: 'Supprimer',
+        effect:
+          'Visible seulement sur un brouillon, pour son professionnel ou la gérante. Après confirmation, supprime l’examen ; la visite revient dans la file du jour.',
+        anyPermission: ['clinical.write'],
+      },
+      {
         label: 'Page suivante',
         effect:
           'Affiche les 50 examens suivants quand la liste compte plusieurs pages ; « Page précédente » revient en arrière.',
@@ -65,15 +77,19 @@ export const PAGES_CONSULTATIONS: readonly PageHelp[] = [
         result: 'L’écran « Consultation » s’ouvre sur l’examen, à la première étape.',
       },
       {
-        id: 'reprendre-un-examen-commence',
-        title: 'Reprendre un examen commencé',
+        id: 'reprendre-modifier-ou-supprimer-un-examen',
+        title: 'Reprendre, modifier ou supprimer un examen',
         anyPermission: ['clinical.write'],
         steps: [
           'Cliquez sur « Tous les jours » : un examen commencé hier se reprend comme les autres.',
           'Dans « État », choisissez « En cours », ou « Brouillon » si aucune étape n’a encore été enregistrée.',
-          'Cochez « Seulement mes examens », puis cliquez sur la carte de l’examen à poursuivre.',
+          'Cochez « Seulement mes examens », puis cliquez sur « Modifier » sur la carte de l’examen à poursuivre.',
+          'Pour corriger un examen « Terminé », cliquez aussi sur « Modifier » : il s’ouvre en correction, avec un motif obligatoire.',
+          'Pour supprimer un examen resté « Brouillon », cliquez sur « Supprimer » sur sa carte, puis confirmez avec « Supprimer le brouillon ».',
+          'Pour y renoncer, cliquez sur « Garder le brouillon » : rien n’est supprimé.',
         ],
-        result: 'Les étapes déjà enregistrées sont retrouvées ; il reste à remplir les autres.',
+        result:
+          'Un examen poursuivi retrouve ses étapes enregistrées. Un brouillon supprimé disparaît de la liste et sa visite revient dans la file du jour, prête à redémarrer.',
       },
       {
         id: 'demarrer-une-consultation',
@@ -90,8 +106,8 @@ export const PAGES_CONSULTATIONS: readonly PageHelp[] = [
       },
     ],
     rules: [
-      'Sans filtre choisi, la liste montre les examens d’aujourd’hui, du plus récent au plus ancien, 50 par page.',
-      'La liste ne montre aucune valeur médicale : seulement le patient, le dossier, la date, l’état et le professionnel.',
+      'Sans filtre choisi, la liste montre les examens d’aujourd’hui, du plus récent au plus ancien, 50 par page, sans aucune valeur médicale.',
+      'Seul un examen « Brouillon » se supprime, par son professionnel ou la gérante. Un examen en cours se poursuit ; un examen terminé se corrige par une révision, jamais supprimé.',
       'Ouvrir un examen est consigné au nom du compte qui le lit : chaque lecture d’un dossier médical laisse une trace.',
       'Un examen se démarre avec « Nouvelle consultation » ou depuis la file du jour ; cliquer sur une carte de cette liste ne démarre jamais un examen.',
       'Une liste que le serveur n’a pas pu fournir n’est jamais présentée comme vide : l’écran dit que le serveur n’a pas répondu.',
@@ -115,7 +131,7 @@ export const PAGES_CONSULTATIONS: readonly PageHelp[] = [
     tips: [
       'Depuis l’accueil, « Nouvelle consultation » (sous « Actions ») ouvre cette liste avec la boîte de démarrage déjà ouverte ; « Mes examens en cours » et « Examens du jour » l’ouvrent avec les filtres posés.',
       'Le menu « Consultations » ouvre aussi cette liste, sur les examens d’aujourd’hui.',
-      'Toute la carte est cliquable pour ouvrir l’examen ; le lien « Révisions » est le seul autre lien d’une carte.',
+      'Toute la carte est cliquable pour ouvrir l’examen ; ses boutons « Modifier » et « Supprimer » et le lien « Révisions » sont les seuls autres éléments d’une carte.',
     ],
     problems: [
       {
@@ -134,13 +150,14 @@ export const PAGES_CONSULTATIONS: readonly PageHelp[] = [
           'Le serveur n’a pas répondu : ce n’est pas une liste vide. Cliquez sur « Réessayer » quand la connexion est revenue.',
       },
       {
-        symptom: '« Session expirée »',
-        remedy: 'Cliquez sur « Se reconnecter » dans l’en-tête, puis sur « Réessayer ».',
+        symptom: '« Session expirée » ou « Droits insuffisants »',
+        remedy:
+          'Session expirée : cliquez sur « Se reconnecter » dans l’en-tête, puis sur « Réessayer ». Droits insuffisants : ce compte ne peut pas lire les dossiers médicaux, demandez à la gérante si votre travail l’exige.',
       },
       {
-        symptom: '« Droits insuffisants »',
+        symptom: 'Pas de bouton « Supprimer » sur la carte d’un examen',
         remedy:
-          'Ce compte ne peut pas lire les dossiers médicaux. Demandez à la gérante si votre travail l’exige.',
+          'Seul un examen « Brouillon » (aucune étape enregistrée) se supprime, par son professionnel ou la gérante. Un examen « En cours » se poursuit avec « Modifier » ; un examen « Terminé » se corrige, il ne se supprime jamais.',
       },
     ],
     terms: ['Examen', 'Brouillon', 'Révision', 'File du jour'],
@@ -180,6 +197,12 @@ export const PAGES_CONSULTATIONS: readonly PageHelp[] = [
         effect:
           'Rouvre un examen terminé pour le corriger. Un motif est obligatoire et une nouvelle révision est créée.',
         anyPermission: ['clinical.amend'],
+      },
+      {
+        label: 'Supprimer le brouillon',
+        effect:
+          'Visible tant qu’aucune étape n’est enregistrée, pour son professionnel ou la gérante. Après confirmation, supprime l’examen et revient à la liste.',
+        anyPermission: ['clinical.write'],
       },
       {
         label: 'Révisions et comparaison',
@@ -261,7 +284,7 @@ export const PAGES_CONSULTATIONS: readonly PageHelp[] = [
       'L’acuité se saisit telle que lue, dans l’échelle choisie pour chaque groupe (loin, près, après correction). Aucune conversion n’est faite : deux échelles différentes ne se comparent pas.',
       'Trois mesures séparées : autoréfracteur, objective, subjective. Deux décimales au plus, jamais arrondies ; l’axe va de 0 à 180. L’écart pupillaire du ticket s’enregistre avec la réfraction, mais appartient au « Centrage ».',
       'Cocher « Autre » ouvre un champ à préciser, obligatoire. Les questions liées à un « Oui » (ancienne correction, niveau d’urgence, motifs) ne sont enregistrées que si la réponse est « Oui ».',
-      'Terminer fige la révision 1 : l’examen passe en lecture seule. Une correction crée une nouvelle révision avec son motif ; les révisions précédentes ne changent jamais.',
+      'Terminer fige la révision 1 : l’examen passe en lecture seule. Une correction crée une nouvelle révision motivée ; les précédentes ne changent jamais. Seul un brouillon se supprime.',
     ],
     next: [
       {

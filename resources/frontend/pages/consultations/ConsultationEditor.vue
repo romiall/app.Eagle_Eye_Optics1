@@ -25,14 +25,19 @@
  *   « Transmettre à la caisse » (la facture de l'examen, patient et visite déjà renseignés) pour qui peut facturer ;
  *   les autres comptes lisent où la caisse crée la facture. Pendant l'examen, un bloc mène à la « Prescription
  *   optique » (écran à part, utilisable dès l'examen en cours).
+ * - Examen resté BROUILLON (aucune rubrique enregistrée) : « Supprimer le brouillon » en tête de page, pour le
+ *   professionnel qui l'a démarré ou la gérante ; confirmation, puis retour à la liste. Un examen en cours ou terminé ne
+ *   l'offre jamais (terminé : « Corriger l'examen »). `?corriger=1` (bouton « Modifier » de la liste) ouvre un examen
+ *   terminé directement en correction.
  * - Sans le droit d'écriture (clinical.write) : lecture seule, aucun bouton d'enregistrement.
  * - Hors ligne : « Consultation indisponible », jamais une consultation vide.
  * Une instance par consultation (l'écran la recrée quand l'adresse change).
  */
 import { computed, nextTick, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 
 import { clinicTimeZone, formatInstantFr } from '@/app/clinicTime'
-import { canOnScreen, moduleOpenOnScreen } from '@/app/session'
+import { canOnScreen, knownAccountId, moduleOpenOnScreen } from '@/app/session'
 import { useUnsavedChangesGuard } from '@/app/unsavedChanges'
 import WorkStatusChip from '@/components/clinical/WorkStatusChip.vue'
 import ConfirmDialog from '@/components/feedback/ConfirmDialog.vue'
@@ -48,6 +53,7 @@ import AppIcon from '@/components/ui/AppIcon.vue'
 import LinkButton from '@/components/ui/LinkButton.vue'
 import { missingDataText } from '@/domain/clinical/completion'
 import { CONTROL_IDS } from '@/domain/clinical/controls'
+import { canDeleteDraftExam } from '@/domain/clinical/draftDeletion'
 import {
   DELIVERED_STEPS,
   type DeliveredStep,
@@ -55,12 +61,15 @@ import {
   STEP_TITLES,
   urgencyLabel,
 } from '@/domain/clinical/labels'
+import { patientDisplayName } from '@/domain/patients/identity'
 
 import AnamnesisStep from './AnamnesisStep.vue'
 import CenteringStep from './CenteringStep.vue'
 import ConclusionStep from './ConclusionStep.vue'
 import ConsultationDocuments from './ConsultationDocuments.vue'
 import ConsultationReadMessage from './ConsultationReadMessage.vue'
+import DeleteConsultationDialog from './DeleteConsultationDialog.vue'
+import { setFlash } from './flash'
 import HistoriesStep from './HistoriesStep.vue'
 import MedicationsStep from './MedicationsStep.vue'
 import PatientBanner from './PatientBanner.vue'
@@ -119,7 +128,60 @@ const heading = ref<HTMLElement | null>(null)
 const timeZone = clinicTimeZone()
 const confirmingCancel = ref(false)
 
-useUnsavedChangesGuard(anyDirty)
+const route = useRoute()
+const router = useRouter()
+
+// Après la suppression du brouillon, ce qui était saisi et non enregistré n'a plus d'objet : on quitte sans demander.
+const leaving = ref(false)
+useUnsavedChangesGuard(() => anyDirty.value && !leaving.value)
+
+/**
+ * « Supprimer le brouillon » : seulement un examen resté brouillon, pour le professionnel qui l'a démarré ou la gérante
+ * (`domain/clinical/draftDeletion`) ; le serveur applique la règle et refuse tout autre cas. Après la suppression,
+ * l'examen n'existe plus : retour à la liste des examens, avec le message du résultat.
+ */
+const deleteOpen = ref(false)
+const canDelete = computed(
+  () =>
+    baseline.value !== null &&
+    canDeleteDraftExam(
+      { status: baseline.value.status, clinicianId: baseline.value.clinician_id },
+      { accountId: knownAccountId(), can: canOnScreen },
+    ),
+)
+const patientLabel = computed(() =>
+  baseline.value === null
+    ? ''
+    : patientDisplayName(baseline.value.patient.last_name, baseline.value.patient.first_names),
+)
+
+async function onDeleted(message: string): Promise<void> {
+  leaving.value = true
+  deleteOpen.value = false
+  setFlash(message)
+  await router.push({ name: 'consultations' })
+}
+
+/** Suppression refusée (l'examen a changé, n'est plus un brouillon, droits) : le message du serveur, puis relecture. */
+const deleteProblem = ref<string | null>(null)
+
+function onNotDeleted(message: string): void {
+  deleteOpen.value = false
+  deleteProblem.value = message
+  void editor.reloadFromServer()
+}
+
+// Depuis « Modifier » de la liste, un examen terminé s'ouvre directement en correction (nouvelle révision motivée).
+let correctionRequested = route.query['corriger'] === '1'
+watch(
+  baseline,
+  (value) => {
+    if (!correctionRequested || value === null) return
+    correctionRequested = false
+    if (value.status === 'COMPLETED' && canAmend.value) editor.startAmend()
+  },
+  { immediate: true },
+)
 
 // Le titre de l'étape reçoit le focus à chaque changement d'étape (annoncé aux lecteurs d'écran).
 watch(current, async () => {
@@ -238,7 +300,32 @@ function stepBadge(step: DeliveredStep): string {
       title="Consultation"
       icon="consultations"
       :back="{ to: { name: 'consultations' }, label: 'Retour aux consultations' }"
+    >
+      <!-- Un examen resté brouillon se supprime ; un examen en cours ou terminé jamais (terminé : « Corriger l'examen »). -->
+      <template v-if="canDelete" #actions>
+        <AppButton
+          variant="danger"
+          :disabled="busy"
+          :accessible-name="`Supprimer le brouillon de ${patientLabel}`"
+          @click="deleteOpen = true"
+          ><AppIcon name="trash" :size="18" />Supprimer le brouillon</AppButton
+        >
+      </template>
+    </PageHeader>
+
+    <DeleteConsultationDialog
+      v-if="deleteOpen && baseline !== null"
+      :consultation-id="props.consultationId"
+      :version="baseline.version"
+      :patient-name="patientLabel"
+      @deleted="onDeleted"
+      @stale="onNotDeleted"
+      @close="deleteOpen = false"
     />
+
+    <StateMessage v-if="deleteProblem" state="conflict" title="Examen non supprimé">
+      {{ deleteProblem }}
+    </StateMessage>
 
     <ConsultationReadMessage
       v-if="baseline === null"

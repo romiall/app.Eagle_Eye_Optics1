@@ -1643,6 +1643,23 @@
         }
       }
     },
+    "DeleteConsultationDraftRequest": {
+      "description": "Suppression d'un examen resté brouillon (aucune rubrique enregistrée) : version de la consultation attendue. Refusée (409) si l'examen est en cours ou terminé, ou si une prescription validée, un contrôle recommandé ou une rubrique clinique y est rattaché.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "expected_version",
+        "consultation_id"
+      ],
+      "properties": {
+        "expected_version": {
+          "$ref": "../../schemas/common.json#/$defs/Version"
+        },
+        "consultation_id": {
+          "$ref": "../../schemas/common.json#/$defs/Ulid"
+        }
+      }
+    },
     "CancelVisitRequest": {
       "description": "Annulation d'une visite avant l'examen (P03) : version de la visite attendue, motif obligatoire (information d'accueil seulement, conservé dans l'audit). Refusée si l'examen a démarré ou si une facture non abandonnée est liée à la visite.",
       "type": "object",

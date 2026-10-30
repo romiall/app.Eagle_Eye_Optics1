@@ -324,7 +324,7 @@
       }
     },
     "ConsultationSummary": {
-      "description": "Examen dans la liste du cabinet : patient (identité administrative de base), état, dates, révision et professionnel. Aucune valeur clinique.",
+      "description": "Examen dans la liste du cabinet : patient (identité administrative de base), état, dates, révision, version (attendue par la suppression d'un brouillon) et professionnel. Aucune valeur clinique.",
       "type": "object",
       "additionalProperties": false,
       "required": [
@@ -335,6 +335,7 @@
         "effective_at",
         "completed_at",
         "current_revision",
+        "version",
         "patient",
         "clinician"
       ],
@@ -360,6 +361,10 @@
         "current_revision": {
           "type": "integer",
           "minimum": 0
+        },
+        "version": {
+          "type": "integer",
+          "minimum": 1
         },
         "patient": {
           "$ref": "#/$defs/ConsultationPatient"
@@ -756,6 +761,44 @@
       "properties": {
         "data": {
           "$ref": "#/$defs/Consultation"
+        }
+      }
+    },
+    "ConsultationDeletion": {
+      "description": "Résultat de la suppression d'un examen resté brouillon : la consultation n'existe plus ; la visite est remise dans son état d'avant l'examen (ARRIVED, ou READY_FOR_EXAM / AWAITING_EXAM_FEE quand le paiement de l'examen est contrôlé) avec sa nouvelle version.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "consultation_id",
+        "visit_id",
+        "visit_status",
+        "visit_version"
+      ],
+      "properties": {
+        "consultation_id": {
+          "$ref": "../../schemas/common.json#/$defs/Ulid"
+        },
+        "visit_id": {
+          "$ref": "../../schemas/common.json#/$defs/Ulid"
+        },
+        "visit_status": {
+          "$ref": "../../schemas/enums.json#/$defs/visits.status"
+        },
+        "visit_version": {
+          "type": "integer",
+          "minimum": 1
+        }
+      }
+    },
+    "DeleteConsultationDraftResponse": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "data"
+      ],
+      "properties": {
+        "data": {
+          "$ref": "#/$defs/ConsultationDeletion"
         }
       }
     },

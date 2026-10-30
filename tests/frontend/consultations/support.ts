@@ -256,6 +256,10 @@ export interface ConsultationApi {
   patient: Patient
   getConsultation: Handler<[id: string, request: Recorded]>
   getPatient: Handler<[id: string, request: Recorded]>
+  /** Suppression d'un examen resté brouillon (POST /consultations/:id/delete). */
+  remove: Handler<[id: string, body: Record<string, unknown>, request: Recorded]>
+  /** Vrai après une suppression acceptée : la consultation répond ensuite 404. */
+  removed: boolean
   save: Handler<[id: string, step: string, body: Record<string, unknown>, request: Recorded]>
   start: Handler<[visitId: string, body: Record<string, unknown>, request: Recorded]>
   list: Handler<[day: string | null, page: number, request: Recorded]>
@@ -284,6 +288,7 @@ const START_PATH = /^\/api\/v1\/visits\/([^/]+)\/consultations$/
 const PATIENT_PATH = /^\/api\/v1\/patients\/([^/]+)$/
 const COMPLETE_PATH = /^\/api\/v1\/consultations\/([^/]+)\/complete$/
 const AMEND_PATH = /^\/api\/v1\/consultations\/([^/]+)\/amendments$/
+const DELETE_PATH = /^\/api\/v1\/consultations\/([^/]+)\/delete$/
 const REVISION_PATH = /^\/api\/v1\/consultations\/([^/]+)\/revisions\/([0-9]+)$/
 const CONSULTATION_PRESCRIPTIONS_PATH = /^\/api\/v1\/consultations\/([^/]+)\/prescriptions$/
 const PRESCRIPTION_PATH = /^\/api\/v1\/prescriptions\/([^/]+)$/
@@ -295,6 +300,7 @@ const SCALES_PATH = /^\/api\/v1\/visual-acuity-scales$/
 export const PATHS = {
   complete: COMPLETE_PATH,
   amend: AMEND_PATH,
+  delete: DELETE_PATH,
   revision: REVISION_PATH,
   consultationPrescriptions: CONSULTATION_PRESCRIPTIONS_PATH,
   prescription: PRESCRIPTION_PATH,
@@ -335,6 +341,7 @@ export function stubConsultationApi(
         ConsultationApi,
         | 'getConsultation'
         | 'getPatient'
+        | 'remove'
         | 'save'
         | 'start'
         | 'list'
@@ -367,8 +374,40 @@ export function stubConsultationApi(
     requests,
   } as ConsultationApi
 
-  api.getConsultation = options.handlers?.getConsultation ?? (() => json(200, { data: api.server }))
+  api.removed = false
+  api.getConsultation =
+    options.handlers?.getConsultation ??
+    (() =>
+      api.removed
+        ? apiError(404, 'RESOURCE_NOT_FOUND', 'Ressource introuvable.')
+        : json(200, { data: api.server }))
   api.getPatient = options.handlers?.getPatient ?? (() => json(200, { data: api.patient }))
+  api.remove =
+    options.handlers?.remove ??
+    ((id, body) => {
+      if (api.removed || id !== api.server.id) {
+        return apiError(404, 'RESOURCE_NOT_FOUND', 'Consultation introuvable.')
+      }
+      if (api.server.status !== 'DRAFT') {
+        return errorWithDetails(409, 'STATE_TRANSITION_REFUSED', 'Cet examen ne se supprime pas.', {
+          current_status: api.server.status,
+        })
+      }
+      if (body['expected_version'] !== api.server.version) {
+        return errorWithDetails(409, 'VERSION_CONFLICT', 'La consultation a été modifiée.', {
+          current_version: api.server.version,
+        })
+      }
+      api.removed = true
+      return json(200, {
+        data: {
+          consultation_id: id,
+          visit_id: api.server.visit_id,
+          visit_status: 'ARRIVED',
+          visit_version: 3,
+        },
+      })
+    })
   api.save =
     options.handlers?.save ??
     ((_id, step, body) => {
@@ -634,6 +673,10 @@ export function stubConsultationApi(
     const amended = AMEND_PATH.exec(url.pathname)
     if (amended !== null && method === 'POST') {
       return settle(api.amend(decodeURIComponent(amended[1] ?? ''), body ?? {}, request))
+    }
+    const removing = DELETE_PATH.exec(url.pathname)
+    if (removing !== null && method === 'POST') {
+      return settle(api.remove(decodeURIComponent(removing[1] ?? ''), body ?? {}, request))
     }
     const revision = REVISION_PATH.exec(url.pathname)
     if (revision !== null && method === 'GET') {

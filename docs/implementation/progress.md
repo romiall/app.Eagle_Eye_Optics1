@@ -22,6 +22,31 @@ Chantier demandé par le demandeur (« champs mal alignés, formulaire qui n'ins
 - **Preuves** : captures avant/après (Edge, 1280 et 360 px), `vue-tsc`, ESLint, Prettier, Vitest (`fields.test.ts`, `choice-fields.test.ts`, `form-styles.test.ts`, `palette.test.ts`), Playwright (`patients.spec.ts` et `forms-layout.spec.ts` : alignement mesuré dans le navigateur à 360, 768, 1024 et 1280 px). CI : verte sur le dernier commit de la branche (runs lisibles par l'API publique : /repos/romiall/app.Eagle_Eye_Optics2/actions/runs?branch=claude/formulaires-presentation). Détail : `docs/implementation/shell.md` ; prompt de reprise : `docs/prompts/reprise-apres-formulaires.md`.
 - **Fusion et vérification (2026-10-29)** : sur l'arbre fusionné `213d913` (aucune CI : rien n'est poussé), `composer audit --locked`, `vue-tsc`, ESLint et Prettier passent ; Vitest : 136 fichiers et 2 514 tests (trois fichiers dont le worker n'avait pas démarré sur le poste saturé, relancés seuls : verts) ; Playwright : 73 parcours, 71 verts en 3,3 h sur un poste saturé, les deux autres (`forms-layout.spec.ts` : délai de 60 s ; `legacy-balances.spec.ts` : la page de caisse n'affichait rien en 20 s) verts à la relance sur un poste calme. Revue contradictoire de la fusion (6 relecteurs, 2 sceptiques par constat, lecture seule) : un seul constat, documentaire (la piste « couper le JIT » ci-dessus), corrigé ; aucune collision de classes, de tests ni de composants. Écran de déverrouillage et création de patient sur le poste vérifiés à l'écran à 1280, 768 et 360 px (captures dans le dossier de notes des sessions). Écarts relevés, du côté hors ligne et hors de ce chantier : à 360 px, poste déverrouillé, l'en-tête déborde de 26 px (rangée « Aide, Verrouiller le poste, Se déconnecter » de `App.vue`, sans retour à la ligne) ; dans `DevicePreparationPage.vue`, l'étiquette « Numéros de dossiers patients » passe sur deux lignes à 768 px et décale sa saisie de celles de ses voisines (`sm:grid-cols-3`) ; l'introduction de `PatientCreatePage.vue` dit que le numéro de dossier est attribué par le serveur alors que le poste hors ligne le tire de sa plage.
 
+## Chantier « CRUD des écrans », tranche 1 : modifier et supprimer un examen (2026-10-30)
+
+Demande du demandeur : « préparer les CRUD pour la plupart des opérations… on supprime une consultation quand elle est
+encore en brouillon, uniquement en brouillon pour l'instant », après avoir créé en production un examen de test resté en
+brouillon que rien ne permettait de retirer (aucune donnée de production n'a été touchée : c'est la fonction livrée qui
+le lui permettra). Branche `claude/crud-ecrans`, coupée de `origin/claude/facture-hors-ligne` (`2f659dc`, ce que la
+production exécute) ; avec l'accord du demandeur le dossier principal a été basculé sur cette branche (aucun worktree) ; la
+branche locale `claude/facture-hors-ligne` et son `wip(clinic)` (non vérifié, jamais poussé) restent intacts. Détail
+technique : `clinical.md`, « Modifier et supprimer un examen » ; droits : `access.md`, « Qui supprime un brouillon d'examen ».
+
+- **Fonction** : commande `DeleteConsultationDraft` (chemin central, en ligne seulement, `POST /consultations/{id}/delete`) ;
+  brouillon seulement (aucune rubrique enregistrée), par son professionnel ou la gérante ; défait la visite (retour à
+  l'état d'avant, l'examen peut être redémarré) et les prescriptions brouillon ; refuse en 409 tout examen en cours ou
+  terminé, une prescription validée ou utilisée, un contrôle recommandé, une version périmée ; audit `consultation.deleted`
+  sans contenu clinique ; pierre tombale `ARCHIVED` au journal des changements. Écrans : « Modifier » et « Supprimer » sur
+  chaque carte de la liste, « Supprimer le brouillon » dans l'éditeur, `?corriger=1` pour ouvrir un examen terminé en
+  correction. Aide intégrée mise à jour. Aucune permission nouvelle, aucune table ni migration.
+- **Question laissée au demandeur** : étendre la suppression aux examens « En cours » (des rubriques saisies, non validées) ?
+  Recommandation : non pour l'instant (il a dit « uniquement en brouillon »).
+- **Preuves (poste Windows, avant CI)** : PHPUnit `DeleteConsultationDraftTest` (22 cas) et 2 cas billed ;
+  sous-ensemble de 1 704 tests (clinique, contrats, chemin central, patients, accès, HTTP, unitaires) verts ; Vitest 153
+  fichiers, 3 202 tests ; `vue-tsc`, ESLint, Prettier, PHPStan, Pint, contrats `--check`, build verts ; Playwright
+  `consultation-suppression.spec.ts` sur la vraie application (suppression, redémarrage, refus d'un examen en cours et d'un
+  examen terminé par le serveur, correction depuis « Modifier ») ; captures 1366 et 360 px.
+
 ## Priorité du demandeur (2026-10-22), réestimation et écarts de planning
 
 **Décision du demandeur (message du 2026-10-22).** La cliente a payé la moitié de la création et

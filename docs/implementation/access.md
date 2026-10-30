@@ -240,3 +240,23 @@ Clé privée de signature du serveur : fichier PEM privé créé par `php artisa
 l'émission d'un grant répond 409 et rien n'est écrit. Audit : `device.enrolled`, `offline_grant.issued`,
 `device.revoked`, `offline_grant.revoked` (jamais de secret ni de donnée patient). Détails et coffre local :
 `vault.md`, section « Implémentation (O01, O02) ».
+
+## Qui supprime un brouillon d'examen (2026-10-30, chantier « CRUD des écrans », tranche 1)
+
+Commande `DeleteConsultationDraft` (en ligne seulement ; détail : `clinical.md`, « Modifier et supprimer un examen »).
+**Aucune permission nouvelle ni élargie** : le référentiel reste de 49 codes, rien n'est ajouté au semis, aucun droit de
+profil ne change.
+
+| Compte | Brouillon qu'il a démarré | Brouillon d'un autre professionnel | Examen en cours ou terminé |
+| --- | --- | --- | --- |
+| Professionnel (`clinical.write`, `clinical.read`) | Supprime | 403 `ACTION_FORBIDDEN` | 409 `STATE_TRANSITION_REFUSED` |
+| Gérante (`clinical.write`, `clinical.read`, `approval.decide`) | Supprime | Supprime | 409 |
+| Accueil, caisse (aucun `clinical.*`) | 403 | 403 | 403 |
+| Compte dont une dérogation retire `clinical.write` ou `clinical.read` | 403 | 403 | 403 |
+
+L'auteur est `consultations.clinician_id` (le compte qui a démarré l'examen). La gérante est reconnue au code
+`approval.decide`, comme partout où elle « modifie le brouillon d'un autre compte » (`ActorRights::manager`) : un
+profil qui reçoit ce code par dérogation a donc aussi ce pouvoir sur les brouillons d'examen. L'écran ne montre le
+bouton que dans ces cas (`domain/clinical/draftDeletion.ts`, testé par `draft-deletion.test.ts`) ; le serveur refait le
+contrôle à chaque commande (`DeleteConsultationDraftTest` : auteur, gérante, autre professionnel, accueil, caisse,
+dérogation). Un poste hors ligne ne détient pas cette commande : un grant ne la porte pas, la source `SYNC` est refusée.

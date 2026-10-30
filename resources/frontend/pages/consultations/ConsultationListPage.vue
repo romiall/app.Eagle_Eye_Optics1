@@ -11,6 +11,11 @@
  * « Nouvelle consultation » (`clinical.write`) ouvre la boîte de démarrage d'un examen : patients de la file
  * du jour, ou recherche d'un autre patient (`StartConsultationDialog`).
  *
+ * Chaque carte offre « Modifier » (ouvre l'examen pour le poursuivre ; un examen terminé s'ouvre en correction,
+ * nouvelle révision motivée, avec `clinical.amend`) et, pour un examen resté BROUILLON seulement, « Supprimer »
+ * (le professionnel qui l'a démarré ou la gérante) : confirmation, puis commande `DeleteConsultationDraft` (le serveur
+ * applique la règle et refuse tout autre cas). Les boutons suivent `domain/clinical/draftDeletion.ts`.
+ *
  * Préréglages par l'adresse (raccourcis de l'accueil) : `?jour=tous`, `?etat=IN_PROGRESS`, `?mes=1` — des
  * filtres, jamais une donnée de santé — et `?nouvelle=1`, qui ouvre la boîte « Nouvelle consultation ».
  */
@@ -19,7 +24,7 @@ import { RouterLink, useRoute, useRouter } from 'vue-router'
 
 import { clinicTimeZone, clinicToday, formatInstantFr } from '@/app/clinicTime'
 import { listConsultations } from '@/app/services/consultationList'
-import { canOnScreen } from '@/app/session'
+import { canOnScreen, knownAccountId } from '@/app/session'
 import WorkStatusChip from '@/components/clinical/WorkStatusChip.vue'
 import FreshnessNote from '@/components/feedback/FreshnessNote.vue'
 import ReadNotice from '@/components/feedback/ReadNotice.vue'
@@ -30,7 +35,9 @@ import SelectField from '@/components/form/SelectField.vue'
 import PageHeader from '@/components/layout/PageHeader.vue'
 import AppButton from '@/components/ui/AppButton.vue'
 import AppIcon from '@/components/ui/AppIcon.vue'
+import LinkButton from '@/components/ui/LinkButton.vue'
 import PaginationControls from '@/components/ui/PaginationControls.vue'
+import { canDeleteDraftExam, modifyKind, modifyNote } from '@/domain/clinical/draftDeletion'
 import { WORK_STATUS_LABELS } from '@/domain/clinical/labels'
 import type {
   ConsultationSummary,
@@ -40,6 +47,8 @@ import type {
 import { patientDisplayName } from '@/domain/patients/identity'
 import { useServerRead } from '@/pages/today/useServerRead'
 
+import DeleteConsultationDialog from './DeleteConsultationDialog.vue'
+import { takeFlash } from './flash'
 import StartConsultationDialog from './StartConsultationDialog.vue'
 
 const STATUSES: readonly ConsultationsStatus[] = ['DRAFT', 'IN_PROGRESS', 'COMPLETED']
@@ -112,6 +121,51 @@ function name(consultation: ConsultationSummary): string {
   return patientDisplayName(consultation.patient.last_name, consultation.patient.first_names)
 }
 
+/**
+ * « Modifier » et « Supprimer » : affichés selon l'état de l'examen et les droits du compte tels que l'écran les
+ * connaît (`domain/clinical/draftDeletion`) ; le serveur revérifie chaque commande et refuse tout autre cas.
+ */
+function exam(consultation: ConsultationSummary): { status: string; clinicianId: string } {
+  return { status: consultation.status, clinicianId: consultation.clinician.id }
+}
+
+function modification(consultation: ConsultationSummary): ReturnType<typeof modifyKind> {
+  return modifyKind(exam(consultation), { accountId: knownAccountId(), can: canOnScreen })
+}
+
+function deletable(consultation: ConsultationSummary): boolean {
+  return canDeleteDraftExam(exam(consultation), { accountId: knownAccountId(), can: canOnScreen })
+}
+
+/** Nom accessible de « Modifier » : il commence par le libellé visible et dit qu'une correction crée une révision. */
+function modifyName(consultation: ConsultationSummary): string {
+  const kind = modification(consultation)
+  return `Modifier l’examen de ${name(consultation)}${kind === null ? '' : modifyNote(kind)}`
+}
+
+/** Un examen terminé se corrige (nouvelle révision) : l'éditeur ouvre directement la correction. */
+function modifyTarget(consultation: ConsultationSummary) {
+  const base = { name: 'consultation', params: { id: consultation.id } }
+  return modification(consultation) === 'correct' ? { ...base, query: { corriger: '1' } } : base
+}
+
+function hasFooter(consultation: ConsultationSummary): boolean {
+  return consultation.completed_at !== null || consultation.status === 'COMPLETED'
+}
+
+/** Examen dont la suppression est demandée (une seule boîte pour toute la liste) et message du dernier résultat. */
+const deleting = ref<ConsultationSummary | null>(null)
+const flash = takeFlash()
+const notice = ref<{ state: 'success' | 'conflict'; message: string } | null>(
+  flash === null ? null : { state: 'success', message: flash },
+)
+
+function afterDeleteAttempt(state: 'success' | 'conflict', message: string): void {
+  deleting.value = null
+  notice.value = { state, message }
+  void read.reload()
+}
+
 const emptyTitle = computed(() =>
   day.value === null
     ? 'Aucun examen pour ces critères'
@@ -135,6 +189,24 @@ const emptyTitle = computed(() =>
     </PageHeader>
 
     <StartConsultationDialog v-if="startOpen" @close="closeStart" />
+
+    <DeleteConsultationDialog
+      v-if="deleting !== null"
+      :consultation-id="deleting.id"
+      :version="deleting.version"
+      :patient-name="name(deleting)"
+      @deleted="afterDeleteAttempt('success', $event)"
+      @stale="afterDeleteAttempt('conflict', $event)"
+      @close="deleting = null"
+    />
+
+    <StateMessage
+      v-if="notice !== null"
+      :state="notice.state"
+      :title="notice.state === 'success' ? 'Examen supprimé' : 'Examen non supprimé'"
+    >
+      {{ notice.message }}
+    </StateMessage>
 
     <form
       role="search"
@@ -250,6 +322,30 @@ const emptyTitle = computed(() =>
               class="text-link relative z-10 inline-flex min-h-11 items-center gap-1.5 font-semibold"
               :aria-label="`Révisions de l’examen de ${name(consultation)}`"
               ><AppIcon name="history" :size="16" />Révisions</RouterLink
+            >
+          </div>
+          <!-- Boutons au-dessus du lien étendu de la carte (z-10) : « Modifier » ouvre l'examen (un examen terminé s'ouvre
+               en correction : nouvelle révision), « Supprimer » ne paraît que pour un brouillon. -->
+          <div
+            v-if="modification(consultation) !== null || deletable(consultation)"
+            :class="[
+              'relative z-10 flex flex-wrap items-center justify-end gap-2',
+              hasFooter(consultation) ? 'pt-1' : 'border-t border-line pt-2',
+            ]"
+          >
+            <LinkButton
+              v-if="modification(consultation) !== null"
+              :to="modifyTarget(consultation)"
+              variant="secondary"
+              :accessible-name="modifyName(consultation)"
+              ><AppIcon name="edit" :size="18" />Modifier</LinkButton
+            >
+            <AppButton
+              v-if="deletable(consultation)"
+              variant="danger"
+              :accessible-name="`Supprimer l’examen de ${name(consultation)}`"
+              @click="deleting = consultation"
+              ><AppIcon name="trash" :size="18" />Supprimer</AppButton
             >
           </div>
         </li>

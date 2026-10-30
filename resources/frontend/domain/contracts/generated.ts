@@ -730,6 +730,7 @@ SchemasRequestsHttpJsonMergePatientsRequest?: MergePatientsRequest
 SchemasRequestsHttpJsonRecordCashMovementRequest?: RecordCashMovementRequest
 SchemasRequestsHttpJsonExpenseCategoryRequest?: ExpenseCategoryRequest
 SchemasRequestsHttpJsonCashVarianceReviewRequest?: CashVarianceReviewRequest
+SchemasRequestsHttpJsonDeleteConsultationDraftRequest?: DeleteConsultationDraftRequest
 SchemasRequestsHttpJsonCancelVisitRequest?: CancelVisitRequest
 SchemasRequestsHttpJsonOpeningStockRequest?: OpeningStockRequest
 SchemasRequestsHttpJsonEnrollDeviceRequest?: EnrollDeviceRequest
@@ -837,6 +838,8 @@ SchemasResourcesClinicalJsonVisualAcuityScale?: VisualAcuityScale
 SchemasResourcesClinicalJsonVisualAcuityScaleList?: VisualAcuityScaleList
 SchemasResourcesClinicalJsonPrescription?: Prescription
 SchemasResourcesClinicalJsonConsultationResponse?: ConsultationResponse
+SchemasResourcesClinicalJsonConsultationDeletion?: ConsultationDeletion
+SchemasResourcesClinicalJsonDeleteConsultationDraftResponse?: DeleteConsultationDraftResponse
 SchemasResourcesClinicalJsonPrescriptionResponse?: PrescriptionResponse
 SchemasResourcesClinicalJsonPrescriptionList?: PrescriptionList
 SchemasResourcesOperationsJsonPublicJwk?: PublicJwk
@@ -6292,6 +6295,13 @@ decision: ("ACCEPTED" | "DISPUTED")
 note: (string | null)
 }
 /**
+ * Suppression d'un examen resté brouillon (aucune rubrique enregistrée) : version de la consultation attendue. Refusée (409) si l'examen est en cours ou terminé, ou si une prescription validée, un contrôle recommandé ou une rubrique clinique y est rattaché.
+ */
+export interface DeleteConsultationDraftRequest {
+expected_version: Version
+consultation_id: Ulid
+}
+/**
  * Annulation d'une visite avant l'examen (P03) : version de la visite attendue, motif obligatoire (information d'accueil seulement, conservé dans l'audit). Refusée si l'examen a démarré ou si une facture non abandonnée est liée à la visite.
  */
 export interface CancelVisitRequest {
@@ -8348,7 +8358,7 @@ sha256: Sha256Hex
 }[]
 }
 /**
- * Examen dans la liste du cabinet : patient (identité administrative de base), état, dates, révision et professionnel. Aucune valeur clinique.
+ * Examen dans la liste du cabinet : patient (identité administrative de base), état, dates, révision, version (attendue par la suppression d'un brouillon) et professionnel. Aucune valeur clinique.
  */
 export interface ConsultationSummary {
 id: Ulid
@@ -8358,6 +8368,7 @@ status: ConsultationsStatus
 effective_at: Instant
 completed_at: NullableInstant
 current_revision: number
+version: number
 patient: ConsultationPatient
 clinician: {
 id: Ulid
@@ -8452,6 +8463,18 @@ updated_at: Instant
 }
 export interface ConsultationResponse {
 data: Consultation
+}
+/**
+ * Résultat de la suppression d'un examen resté brouillon : la consultation n'existe plus ; la visite est remise dans son état d'avant l'examen (ARRIVED, ou READY_FOR_EXAM / AWAITING_EXAM_FEE quand le paiement de l'examen est contrôlé) avec sa nouvelle version.
+ */
+export interface ConsultationDeletion {
+consultation_id: Ulid
+visit_id: Ulid
+visit_status: VisitsStatus
+visit_version: number
+}
+export interface DeleteConsultationDraftResponse {
+data: ConsultationDeletion
 }
 export interface PrescriptionResponse {
 data: Prescription

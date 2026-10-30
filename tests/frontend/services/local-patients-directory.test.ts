@@ -50,6 +50,8 @@ function wire(id: string, fields: Record<string, unknown> = {}): Record<string, 
     archived: false,
     merged_into_patient_id: null,
     version: 3,
+    created_at: '2026-10-01T08:00:00.000Z',
+    updated_at: '2026-10-20T08:00:00.000Z',
     ...fields,
   }
 }

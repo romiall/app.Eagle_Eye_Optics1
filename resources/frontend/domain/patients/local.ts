@@ -58,6 +58,10 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
 }
 
+function isInstant(value: string | null): value is string {
+  return value !== null && Number.isFinite(Date.parse(value))
+}
+
 function sexOf(value: unknown, fallback: PatientRecordsSex): PatientRecordsSex {
   return SEX_CODES.find((code) => code === value) ?? fallback
 }
@@ -79,6 +83,10 @@ export function patientOfPulled(data: unknown): Patient | null {
   if (typeof version !== 'number' || !Number.isSafeInteger(version) || version < 1) return null
   if (typeof data['archived'] !== 'boolean') return null
   if (merged !== null && typeof merged !== 'string') return null
+  // Horodatages exigés par le contrat : l'écran les met en forme, une date illisible ferait échouer son rendu.
+  const createdAt = text(data['created_at'])
+  const updatedAt = text(data['updated_at'])
+  if (!isInstant(createdAt) || !isInstant(updatedAt)) return null
   const guardian = data['guardian_contact']
   return {
     id,
@@ -101,8 +109,8 @@ export function patientOfPulled(data: unknown): Patient | null {
     first_known_visit_on: text(data['first_known_visit_on']),
     first_visit_certified: data['first_visit_certified'] === true,
     legacy_record_number: text(data['legacy_record_number']),
-    created_at: text(data['created_at']) ?? '',
-    updated_at: text(data['updated_at']) ?? '',
+    created_at: createdAt,
+    updated_at: updatedAt,
   }
 }
 

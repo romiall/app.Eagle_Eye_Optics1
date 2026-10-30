@@ -492,6 +492,8 @@ describe('lecture défensive d’une fiche du serveur', () => {
       version: 1,
       archived: false,
       merged_into_patient_id: null,
+      created_at: '2026-10-01T08:00:00.000Z',
+      updated_at: '2026-10-20T08:00:00.000Z',
     })
 
     expect(patient).toMatchObject({
@@ -502,7 +504,8 @@ describe('lecture défensive d’une fiche du serveur', () => {
       guardian_contact: null,
       legacy_record: false,
       first_visit_certified: false,
-      created_at: '',
+      created_at: '2026-10-01T08:00:00.000Z',
+      updated_at: '2026-10-20T08:00:00.000Z',
     })
   })
 
@@ -522,6 +525,10 @@ describe('lecture défensive d’une fiche du serveur', () => {
       wire({ version: '3' }),
       wire({ archived: 'non' }),
       wire({ merged_into_patient_id: 7 }),
+      // Horodatages exigés : l'écran les met en forme, une date absente ou illisible ferait échouer son rendu.
+      wire({ created_at: undefined }),
+      wire({ created_at: '' }),
+      wire({ updated_at: 'hier' }),
     ]) {
       expect(patientOfPulled(bad), JSON.stringify(bad)).toBeNull()
     }
